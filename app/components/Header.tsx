@@ -12,40 +12,57 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Check, X } from "lucide-react";
+import { useMainStore } from "../stores/mainStore";
+import { getMachinesFromParts, getProjectsFromParts } from "../utils/parts";
 
-export default function Header({
-  projects,
-  machines,
-  onProjectSelect,
-  onMachineSelect,
-  onShowCompleteSelected,
-}: {
-  projects: string[];
-  machines: string[];
-  onProjectSelect?: (project: string | null) => void;
-  onMachineSelect?: (machine: string | null) => void;
-  onShowCompleteSelected?: (showComplete: boolean) => void;
-}) {
+export default function Header() {
+  const parts = useMainStore((state) => state.parts);
+  const projects = getProjectsFromParts(parts);
+  const machines = getMachinesFromParts(parts);
+
+  const setFilteredParts = useMainStore((state) => state.setFilteredParts);
+
+  function handleProjectSelect(project: string | null) {
+    if (project === null) {
+      setFilteredParts(null);
+    } else {
+      const filtered = parts.filter((part) => part.project === project);
+      setFilteredParts(filtered);
+    }
+  }
+
+  function handleMachineSelect(machine: string | null) {
+    if (machine === null) {
+      setFilteredParts(null);
+    } else {
+      const filtered = parts.filter((part) => part.machine === machine);
+      setFilteredParts(filtered);
+    }
+  }
+
+  function onShowCompleteSelected(showComplete: boolean) {
+    if (showComplete) {
+      setFilteredParts(null);
+    } else {
+      const filtered = parts.filter((part) => part.status === 7);
+      setFilteredParts(filtered);
+    }
+  }
+
   return (
     <header className="border-b bg-black text-white p-4">
       <div className="grid h-12 w-full grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-4 justify-self-start">
           <ProjectFilter
             projects={projects}
-            onSelect={(project) => {
-              if (onProjectSelect) onProjectSelect(project);
-            }}
+            onSelect={(project) => handleProjectSelect(project)}
           />
           <MachineFilter
             machines={machines}
-            onSelect={(machine) => {
-              if (onMachineSelect) onMachineSelect(machine);
-            }}
+            onSelect={(machine) => handleMachineSelect(machine)}
           />
           <ShowCompleteFilter
-            onSelect={(showComplete) => {
-              if (onShowCompleteSelected) onShowCompleteSelected(showComplete);
-            }}
+            onSelect={(showComplete) => onShowCompleteSelected(showComplete)}
           />
         </div>
         <div className="flex items-center justify-center">
