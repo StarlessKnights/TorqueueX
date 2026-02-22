@@ -84,15 +84,35 @@ export default function Home() {
     }
   }
 
+  function onShowCompleteSelected(showComplete: boolean) {
+    if (showComplete) {
+      const filtered = parts.filter((part) => part.status === 7);
+      setFilteredParts(filtered);
+    } else {
+      setFilteredParts(null);
+    }
+  }
+
   return (
     <div>
       <Header
-        projects={["2026 7492", "2025 7492"]}
-        machines={["3D Printer", "CNC Mill"]}
+        projects={parts
+          .map((part) => part.project)
+          .filter(
+            (project, index, self) =>
+              project && self.indexOf(project) === index,
+          )}
+        machines={parts
+          .map((part) => part.machine)
+          .filter(
+            (machine, index, self) =>
+              machine && self.indexOf(machine) === index,
+          )}
         onProjectSelect={handleProjectSelect}
         onMachineSelect={handleMachineSelect}
+        onShowCompleteSelected={onShowCompleteSelected}
       />
-      <div className="min-h-screen mx-auto bg-zinc-950 px-4 py-6">
+      <div className="min-h-screen mx-auto bg-zinc-950 px-4 py-4">
         <PartTable parts={filteredParts || parts} />
       </div>
     </div>
