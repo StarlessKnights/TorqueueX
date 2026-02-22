@@ -7,6 +7,7 @@ import Header from "./components/Header";
 
 export default function Home() {
   const [parts, setParts] = useState<Part[]>([]);
+  const [machines, setMachines] = useState<string[]>([]);
   const [filteredParts, setFilteredParts] = useState<Part[] | null>(null);
 
   useEffect(() => {
@@ -64,6 +65,8 @@ export default function Home() {
     ];
 
     setParts(newParts);
+
+    setMachines(["Tormach", "Mill", "3D Printer", "Nebula", "Omio"]);
   }, []);
 
   function handleProjectSelect(project: string | null) {
@@ -113,7 +116,7 @@ export default function Home() {
         onShowCompleteSelected={onShowCompleteSelected}
       />
       <div className="min-h-screen mx-auto bg-zinc-950 px-4 py-4">
-        <PartTable parts={filteredParts || parts} />
+        <PartTable parts={filteredParts || parts} machines={machines} />
       </div>
     </div>
   );
