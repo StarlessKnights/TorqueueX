@@ -2,158 +2,98 @@
 
 import { useEffect, useState } from "react";
 import { Part } from "./interfaces/Part";
-import TableHeader from "./components/TableHeader";
-import TableBody from "./components/TableBody";
+import PartTable from "./components/PartTable";
+import Header from "./components/Header";
 
 export default function Home() {
   const [parts, setParts] = useState<Part[]>([]);
+  const [filteredParts, setFilteredParts] = useState<Part[] | null>(null);
 
   useEffect(() => {
     const newParts: Part[] = [
       {
-        id: "1",
-        name: "Part 1",
+        createDate: "02/16/2026 22:7",
+        creator: "Rishabh",
+        dev: {
+          delete: false,
+        },
+        dueDate: "",
+        endmill: "50% Gyroid - 3-5 wall loops",
+        files: {
+          cadExt: "step",
+          camExt: "",
+          camSize: "110 KB",
+        },
+        id: "08132aa0-cf52-499e-8a5f-84d2e1ee03a8",
+        link: "",
+        machine: "3D Printer",
+        material: "PLA/CF",
+        name: "7492-3001-Shooter Hood Guide Left",
+        needed: "2",
+        notes: "",
+        partNumber: 1525,
+        priority: "5",
+        project: "",
+        status: 7,
+      },
+      {
+        createDate: "02/20/2026 13:47",
+        creator: "Rishabh",
+        dev: {
+          delete: false,
+        },
+        dueDate: "",
+        endmill: "",
+        files: {
+          cadExt: "step",
+          camExt: "",
+          camSize: "110 KB",
+        },
+        id: "3b0b2316-946e-4bae-a560-5d0c8a802f00",
+        link: "",
+        machine: "3D Printer",
+        material: "PLA-CF",
+        name: "7492-3002 Shooter Hood Guide Right",
+        needed: "2",
+        notes: "Printed...",
+        partNumber: 1534,
+        priority: "5",
+        project: "2026 7492",
         status: 0,
-        material: "Aluminum",
-        machine: "Machine A",
-        endmill: "Endmill X",
-        needed: "2024-07-01",
-        priority: "High",
-        notes: "This is a note.",
-        project: "Project Alpha",
-        link: "http://example.com/part1",
-        creator: "Alice",
-        createDate: "2024-06-01",
-        partNumber: 123,
-        dueDate: "2024-07-01",
-        asignee: "Bob",
-        files: {
-          cadExt: ".step",
-          camExt: ".gcode",
-          camSize: "2MB",
-        },
-        dev: {
-          delete: false,
-        },
-      },
-      {
-        id: "2",
-        name: "Part 2",
-        status: 1,
-        material: "Steel",
-        machine: "Machine B",
-        endmill: "Endmill Y",
-        needed: "2024-07-03",
-        priority: "Medium",
-        notes: "Roughing pass first.",
-        project: "Project Beta",
-        link: "http://example.com/part2",
-        creator: "Charlie",
-        createDate: "2024-06-02",
-        partNumber: 124,
-        dueDate: "2024-07-03",
-        asignee: "Dana",
-        files: {
-          cadExt: ".stp",
-          camExt: ".nc",
-          camSize: "1.8MB",
-        },
-        dev: {
-          delete: false,
-        },
-      },
-      {
-        id: "3",
-        name: "Part 3",
-        status: 0,
-        material: "Brass",
-        machine: "Machine C",
-        endmill: "Endmill Z",
-        needed: "2024-07-05",
-        priority: "Low",
-        notes: "Tight tolerance on bore.",
-        project: "Project Gamma",
-        link: "http://example.com/part3",
-        creator: "Eve",
-        createDate: "2024-06-03",
-        partNumber: 125,
-        dueDate: "2024-07-05",
-        asignee: "Frank",
-        files: {
-          cadExt: ".step",
-          camExt: ".gcode",
-          camSize: "2.4MB",
-        },
-        dev: {
-          delete: false,
-        },
-      },
-      {
-        id: "4",
-        name: "Part 4",
-        status: 2,
-        material: "Titanium",
-        machine: "Machine A",
-        endmill: "Endmill Q",
-        needed: "2024-07-08",
-        priority: "High",
-        notes: "Use reduced feed near corners.",
-        project: "Project Delta",
-        link: "http://example.com/part4",
-        creator: "Grace",
-        createDate: "2024-06-04",
-        partNumber: 126,
-        dueDate: "2024-07-08",
-        asignee: "Hank",
-        files: {
-          cadExt: ".stp",
-          camExt: ".tap",
-          camSize: "3.1MB",
-        },
-        dev: {
-          delete: false,
-        },
-      },
-      {
-        id: "5",
-        name: "Part 5",
-        status: 1,
-        material: "Delrin",
-        machine: "Machine D",
-        endmill: "Endmill V",
-        needed: "2024-07-10",
-        priority: "Medium",
-        notes: "Deburr edges after finish pass.",
-        project: "Project Epsilon",
-        link: "http://example.com/part5",
-        creator: "Ivy",
-        createDate: "2024-06-05",
-        partNumber: 127,
-        dueDate: "2024-07-10",
-        asignee: "Jack",
-        files: {
-          cadExt: ".step",
-          camExt: ".gcode",
-          camSize: "1.2MB",
-        },
-        dev: {
-          delete: false,
-        },
       },
     ];
 
     setParts(newParts);
   }, []);
 
+  function handleProjectSelect(project: string | null) {
+    if (project === null) {
+      setFilteredParts(null);
+    } else {
+      const filtered = parts.filter((part) => part.project === project);
+      setFilteredParts(filtered);
+    }
+  }
+
+  function handleMachineSelect(machine: string | null) {
+    if (machine === null) {
+      setFilteredParts(null);
+    } else {
+      const filtered = parts.filter((part) => part.machine === machine);
+      setFilteredParts(filtered);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-6">
-      <div className="w-full">
-        <div className="flex flex-col overflow-hidden rounded-lg shadow-lg shadow-black/30">
-          <table className="w-full border-collapse bg-zinc-900">
-            <TableHeader />
-            <TableBody parts={parts} />
-          </table>
-        </div>
+    <div>
+      <Header
+        projects={["2026 7492", "2025 7492"]}
+        machines={["3D Printer", "CNC Mill"]}
+        onProjectSelect={handleProjectSelect}
+        onMachineSelect={handleMachineSelect}
+      />
+      <div className="min-h-screen mx-auto bg-zinc-950 px-4 py-6">
+        <PartTable parts={filteredParts || parts} />
       </div>
     </div>
   );
