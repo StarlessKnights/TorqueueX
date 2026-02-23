@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model parts {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  status      part_status @default(NEEDS_CAD)
+  material    String?
+  machine     String?
+  endmill     String?
+  needed      Int
+  priority    Int         @default(0)
+  notes       String      @default("")
+  project     String?
+  creator     String
+  create_date DateTime    @default(now()) @db.Timestamptz(6)
+  part_number Int
+  due_date    DateTime?   @db.Timestamptz(6)
+}
+
+enum part_status {
+  NEEDS_CAD
+  NEEDS_CAM
+  NEEDS_3D_PRINTING
+  NEEDS_ORDERING
+  NEEDS_MACHINING
+  NEEDS_PROCESSING
+  NEEDS_ASSEMBLY
+  COMPLETE
+}
