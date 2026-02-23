@@ -2,13 +2,15 @@ import { create } from "zustand";
 import { useMainStore } from "./mainStore";
 import { FormState } from "../components/ManageDialog";
 import { part_status } from "@/lib/generated/prisma/enums";
+import { Part } from "../interfaces/Part";
 
 type ActionStore = {
   completePart: (partId: string) => void;
   submitChanges: (partId: string, updatedData: Partial<FormState>) => void;
+  addPart: (newPart: Part) => void;
 };
 
-export const useActionStore = create<ActionStore>((set) => ({
+export const useActionStore = create<ActionStore>(() => ({
   completePart: (partId: string) => {
     useMainStore.setState((state) => {
       const updatedParts = state.parts.map((part) => {
@@ -39,5 +41,10 @@ export const useActionStore = create<ActionStore>((set) => ({
       });
       return { parts: updatedParts };
     });
+  },
+  addPart: (newPart: Part) => {
+    useMainStore.setState((state) => ({
+      parts: [newPart, ...state.parts],
+    }));
   },
 }));

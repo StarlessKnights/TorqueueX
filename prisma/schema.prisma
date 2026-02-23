@@ -25,6 +25,11 @@ model parts {
   due_date    DateTime?   @db.Timestamptz(6)
 }
 
+model machines {
+  id   Int    @id @default(autoincrement())
+  name String
+}
+
 enum part_status {
   NEEDS_CAD
   NEEDS_CAM
