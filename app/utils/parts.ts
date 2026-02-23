@@ -1,6 +1,10 @@
 import { Part } from "../interfaces/Part";
 
 export function getProjectsFromParts(parts: Part[]): string[] {
+  if (!parts || parts.length === 0) {
+    return [];
+  }
+
   const projectsSet = new Set<string>();
   parts.forEach((part) => {
     if (part.project) {
@@ -11,6 +15,10 @@ export function getProjectsFromParts(parts: Part[]): string[] {
 }
 
 export function getMachinesFromParts(parts: Part[]): string[] {
+  if (!parts || parts.length === 0) {
+    return [];
+  }
+
   const machinesSet = new Set<string>();
   parts.forEach((part) => {
     if (part.machine) {

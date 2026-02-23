@@ -22,7 +22,7 @@ import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { ManagePartDialog } from "./ManageDialog";
 
-const getColumns = (machines: string[]): ColumnDef<Part>[] => [
+const getColumns = (): ColumnDef<Part>[] => [
   {
     accessorKey: "priority",
     header: "Priority",
@@ -85,7 +85,7 @@ const getColumns = (machines: string[]): ColumnDef<Part>[] => [
   {
     id: "download",
     header: "Download",
-    cell: ({ row }) => {
+    cell: ({ }) => {
       return (
         <Button variant="outline" size="sm">
           <Download className="h-5 w-5 text-blue-500" />
@@ -102,11 +102,10 @@ const getColumns = (machines: string[]): ColumnDef<Part>[] => [
   },
 ];
 
-export default function PartTable({}) {
-  const machines = useMainStore((state) => state.machines);
+export default function PartTable({ }) {
   const parts = useMainStore((state) => state.parts);
   const filteredParts = useMainStore((state) => state.filteredParts);
-  const columns = useMemo(() => getColumns(machines), [machines]);
+  const columns = useMemo(() => getColumns(), []);
 
   const table = useReactTable({
     data: filteredParts || parts,
@@ -129,9 +128,9 @@ export default function PartTable({}) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                   </TableHead>
                 );
               })}
