@@ -30,11 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Part } from "../interfaces/Part";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
-
-function toNumber(value: string | number): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+import { part_status } from "@/lib/generated/prisma/enums";
 
 function NumberStepper({
   label,
@@ -86,7 +82,7 @@ export type FormState = {
   endmill: string | null;
   creator: string;
   dueDate: Date | undefined;
-  status: number;
+  status: part_status;
   remaining: number;
   priority: number;
   notes: string;
@@ -262,19 +258,40 @@ export function ManagePartDialog({ part }: { part: Part }) {
             </Popover>
           </Field>
           <NumberStepper
-            label="Status"
-            value={formState.status}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "status", value })
-            }
-          />
-          <NumberStepper
             label="Remaining"
             value={formState.remaining}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "remaining", value })
             }
           />
+          <Field>
+            <FieldLabel htmlFor="status">Status</FieldLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full">
+                  {formState.status}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuGroup>
+                  {Object.values(part_status).map((status) => (
+                    <DropdownMenuItem
+                      key={status}
+                      onClick={() =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "status",
+                          value: status,
+                        })
+                      }
+                    >
+                      {status}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
           <NumberStepper
             label="Priority"
             value={formState.priority}

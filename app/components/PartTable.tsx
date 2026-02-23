@@ -28,7 +28,7 @@ const getColumns = (machines: string[]): ColumnDef<Part>[] => [
     header: "Priority",
   },
   {
-    accessorKey: "dueDate",
+    accessorKey: "due_date",
     header: "Due",
     size: 30,
     cell: ({ getValue }) => {

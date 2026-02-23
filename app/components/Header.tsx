@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { useMainStore } from "../stores/mainStore";
 import { getMachinesFromParts, getProjectsFromParts } from "../utils/parts";
+import { part_status } from "@/lib/generated/prisma/enums";
 
 export default function Header() {
   const parts = useMainStore((state) => state.parts);
@@ -44,7 +45,9 @@ export default function Header() {
     if (showComplete) {
       setFilteredParts(null);
     } else {
-      const filtered = parts.filter((part) => part.status === 7);
+      const filtered = parts.filter(
+        (part) => part.status !== part_status.COMPLETE,
+      );
       setFilteredParts(filtered);
     }
   }
