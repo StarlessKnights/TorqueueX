@@ -75,6 +75,7 @@ function NumberStepper({
 }
 
 export type FormState = {
+  id: string;
   name: string;
   machine: string | null;
   project: string | null;
@@ -105,6 +106,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
 
 function getInitialFormState(part: Part): FormState {
   return {
+    id: part.id,
     name: part.name,
     machine: part.machine,
     project: part.project,

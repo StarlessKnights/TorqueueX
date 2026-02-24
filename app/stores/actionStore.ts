@@ -55,44 +55,36 @@ export const useActionStore = create<ActionStore>(() => ({
       });
   },
   submitChanges: (partId: string, updatedData: Partial<FormState>) => {
-    useMainStore.setState((state) => {
-      console.log(
-        "Submitting changes for partId:",
-        partId,
-        "with data:",
-        updatedData,
-      );
+    console.log(
+      "Submitting changes for partId:",
+      partId,
+      "with data:",
+      updatedData,
+    );
 
-      fetch("/api/parts", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...(updatedData as parts) }),
+    fetch("/api/parts", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: partId, ...(updatedData as Partial<parts>) }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to update part");
+        }
+        return response.json();
       })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Failed to update part");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          console.log("Successfully updated part on backend:", data);
+      .then((data: parts) => {
+        console.log("Successfully updated part on backend:", data);
 
-          const updatedParts = state.parts.map((part) => {
-            if (part.id === partId) {
-              return { ...part, ...updatedData };
-            }
-            return part;
-          });
-          return { parts: updatedParts };
-        })
-        .catch((error) => {
-          console.error("Error updating part on backend:", error);
-        });
-
-      return state;
-    });
+        useMainStore.setState((state) => ({
+          parts: state.parts.map((part) => (part.id === partId ? data : part)),
+        }));
+      })
+      .catch((error) => {
+        console.error("Error updating part on backend:", error);
+      });
   },
   addPart: (newPart: Part) => {
     useMainStore.setState((state) => ({
