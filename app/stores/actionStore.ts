@@ -3,6 +3,7 @@ import { useMainStore } from "./mainStore";
 import { FormState } from "../components/ManageDialog";
 import { part_status } from "@/lib/generated/prisma/enums";
 import { Part } from "../interfaces/Part";
+import { parts } from "@/lib/generated/prisma/client";
 
 type ActionStore = {
   completePart: (partId: string) => void;
@@ -12,15 +13,46 @@ type ActionStore = {
 
 export const useActionStore = create<ActionStore>(() => ({
   completePart: (partId: string) => {
-    useMainStore.setState((state) => {
-      const updatedParts = state.parts.map((part) => {
-        if (part.id === partId) {
-          return { ...part, status: part_status.COMPLETE };
+    const part = useMainStore.getState().parts.find((p) => p.id === partId);
+
+    if (!part) {
+      console.error("Part not found for completion:", partId);
+      return;
+    }
+
+    fetch("/api/parts/complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ partId }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to complete part");
         }
-        return part;
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Successfully completed part on backend:", data);
+
+        useMainStore.setState((state) => {
+          const updatedParts = state.parts.map((p) => {
+            if (p.id === partId) {
+              return {
+                ...p,
+                needed: data.newNeeded,
+                status: data.newStatus,
+              };
+            }
+            return p;
+          });
+          return { parts: updatedParts };
+        });
+      })
+      .catch((error) => {
+        console.error("Error completing part on backend:", error);
       });
-      return { parts: updatedParts };
-    });
   },
   submitChanges: (partId: string, updatedData: Partial<FormState>) => {
     useMainStore.setState((state) => {
@@ -31,15 +63,35 @@ export const useActionStore = create<ActionStore>(() => ({
         updatedData,
       );
 
-      console.log("Replace this with an actual backend call later");
+      fetch("/api/parts", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...(updatedData as parts) }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to update part");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Successfully updated part on backend:", data);
 
-      const updatedParts = state.parts.map((part) => {
-        if (part.id === partId) {
-          return { ...part, ...updatedData };
-        }
-        return part;
-      });
-      return { parts: updatedParts };
+          const updatedParts = state.parts.map((part) => {
+            if (part.id === partId) {
+              return { ...part, ...updatedData };
+            }
+            return part;
+          });
+          return { parts: updatedParts };
+        })
+        .catch((error) => {
+          console.error("Error updating part on backend:", error);
+        });
+
+      return state;
     });
   },
   addPart: (newPart: Part) => {

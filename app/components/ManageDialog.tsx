@@ -81,9 +81,9 @@ export type FormState = {
   material: string | null;
   endmill: string | null;
   creator: string;
-  dueDate: Date | undefined;
+  due_date: Date | undefined;
   status: part_status;
-  remaining: number;
+  needed: number;
   priority: number;
   notes: string;
 };
@@ -111,9 +111,9 @@ function getInitialFormState(part: Part): FormState {
     material: part.material,
     endmill: part.endmill,
     creator: part.creator,
-    dueDate: undefined,
+    due_date: part.due_date ? new Date(part.due_date) : undefined,
     status: part.status,
-    remaining: part.needed,
+    needed: part.needed,
     priority: part.priority,
     notes: part.notes || "",
   };
@@ -238,30 +238,40 @@ export function ManagePartDialog({ part }: { part: Part }) {
                   size="sm"
                   className="w-full text-left"
                 >
-                  {formState.dueDate?.toLocaleDateString() || "Select due date"}
+                  {formState.due_date
+                    ? formState.due_date.toLocaleDateString()
+                    : "Select due date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={formState.dueDate}
+                  selected={
+                    formState.due_date
+                      ? new Date(formState.due_date)
+                      : undefined
+                  }
                   onSelect={(date) =>
                     dispatch({
                       type: "SET_FIELD",
-                      field: "dueDate",
+                      field: "due_date",
                       value: date,
                     })
                   }
-                  defaultMonth={formState.dueDate}
+                  defaultMonth={
+                    formState.due_date
+                      ? new Date(formState.due_date)
+                      : undefined
+                  }
                 />
               </PopoverContent>
             </Popover>
           </Field>
           <NumberStepper
-            label="Remaining"
-            value={formState.remaining}
+            label="Needed"
+            value={formState.needed}
             onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "remaining", value })
+              dispatch({ type: "SET_FIELD", field: "needed", value })
             }
           />
           <Field>

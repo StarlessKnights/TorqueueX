@@ -12,11 +12,15 @@ export default function Home() {
   useEffect(() => {
     async function fetchParts() {
       try {
+        useMainStore.setState({ isLoadingParts: true });
+
         const response = await fetch("/api/parts");
         const data = await response.json();
         setParts(data);
       } catch (error) {
         console.error("Failed to fetch parts:", error);
+      } finally {
+        useMainStore.setState({ isLoadingParts: false });
       }
     }
 
