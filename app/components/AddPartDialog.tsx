@@ -31,6 +31,7 @@ import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { Part } from "../interfaces/Part";
 import { part_status } from "@/lib/generated/prisma/enums";
+import { parts } from "@/lib/generated/prisma/client";
 
 type AddFormState = {
   name: string;
@@ -156,12 +157,11 @@ export default function AddPartDialog() {
       return;
     }
 
-    const maxPartNumber = parts.reduce(
-      (max, part) => Math.max(max, part.part_number),
-      0,
-    );
+    const maxPartNumber = parts.reduce((max, part) => {
+      return part.part_number > max ? part.part_number : max;
+    }, 0);
 
-    const newPart: Part = {
+    const newPart: parts = {
       id: crypto.randomUUID(),
       name: formState.name.trim(),
       machine: formState.machine,
@@ -174,11 +174,25 @@ export default function AddPartDialog() {
       needed: formState.remaining,
       priority: formState.priority,
       notes: formState.notes,
-      create_date: new Date(),
+      create_date: new Date(), // will be replaced by server time
       part_number: maxPartNumber + 1,
     };
 
     console.log("Adding part:", newPart);
+
+    fetch("/api/parts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newPart),
+    }).then((response) => {
+      if (!response.ok) {
+        console.error("Failed to add part:", response.statusText);
+      } else {
+        console.log("Part added successfully");
+      }
+    });
 
     addPart(newPart);
     dispatch({ type: "RESET", payload: initialFormState });

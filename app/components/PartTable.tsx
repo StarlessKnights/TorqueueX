@@ -32,9 +32,11 @@ const getColumns = (): ColumnDef<Part>[] => [
     header: "Due",
     size: 30,
     cell: ({ getValue }) => {
-      const dueDate = getValue() as Date | null;
+      let dueDate = getValue() as string | null;
+      dueDate = dueDate ? dueDate.split("T")[0] : null;
+
       if (!dueDate) return "N/A";
-      return <span className={""}>{dueDate.toLocaleDateString()}</span>;
+      return <span className={""}>{dueDate}</span>;
     },
   },
   {
@@ -85,7 +87,7 @@ const getColumns = (): ColumnDef<Part>[] => [
   {
     id: "download",
     header: "Download",
-    cell: ({ }) => {
+    cell: ({}) => {
       return (
         <Button variant="outline" size="sm">
           <Download className="h-5 w-5 text-blue-500" />
@@ -102,10 +104,11 @@ const getColumns = (): ColumnDef<Part>[] => [
   },
 ];
 
-export default function PartTable({ }) {
+export default function PartTable({}) {
   const parts = useMainStore((state) => state.parts);
   const filteredParts = useMainStore((state) => state.filteredParts);
   const columns = useMemo(() => getColumns(), []);
+  const isLoadingParts = useMainStore((state) => state.isLoadingParts);
 
   const table = useReactTable({
     data: filteredParts || parts,
@@ -128,9 +131,9 @@ export default function PartTable({ }) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 );
               })}
@@ -138,7 +141,13 @@ export default function PartTable({ }) {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows?.length ? (
+          {isLoadingParts ? (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                Loading parts...
+              </TableCell>
+            </TableRow>
+          ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parts } from "@/lib/generated/prisma/client";
 
 export async function GET() {
   try {
@@ -13,6 +14,57 @@ export async function GET() {
 
     return NextResponse.json(
       { error: "Failed to fetch parts" },
+      { status: 500 },
+    );
+  }
+}
+
+// Adding a part
+export async function POST(request: Request) {
+  try {
+    const data = (await request.json()) as parts;
+
+    console.log("Received new part data:", data);
+
+    const newPart = await prisma.parts.create({
+      data: {
+        ...data,
+        create_date: new Date(),
+      },
+    });
+
+    console.log("Created new part:", newPart);
+
+    return NextResponse.json(newPart, { status: 201 });
+  } catch (error) {
+    console.error("Failed to create part:", error);
+
+    return NextResponse.json(
+      { error: "Failed to create part" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const data = (await request.json()) as parts;
+
+    console.log("Received updated part data:", data);
+
+    const updatedPart = await prisma.parts.update({
+      where: { id: data.id },
+      data: data,
+    });
+
+    console.log("Updated part:", updatedPart);
+
+    return NextResponse.json(updatedPart);
+  } catch (error) {
+    console.error("Failed to update part:", error);
+
+    return NextResponse.json(
+      { error: "Failed to update part" },
       { status: 500 },
     );
   }
