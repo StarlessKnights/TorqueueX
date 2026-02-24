@@ -52,6 +52,14 @@ export async function PUT(request: Request) {
 
     console.log("Received updated part data:", data);
 
+    if (!data.id) {
+      console.error("Part ID is required for update");
+      return NextResponse.json(
+        { error: "Part ID is required for update" },
+        { status: 400 },
+      );
+    }
+
     const updatedPart = await prisma.parts.update({
       where: { id: data.id },
       data: data,
