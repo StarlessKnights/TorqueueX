@@ -21,6 +21,49 @@ import { useMemo } from "react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { ManagePartDialog } from "./ManageDialog";
+import rustfs_client from "@/lib/rustfs";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+
+async function handleFileDownload(part: Part) {
+  if (!part.cad_file) {
+    console.error("No CAD file to download");
+    return;
+  }
+
+  try {
+    const response = await rustfs_client.send(
+      new GetObjectCommand({
+        Bucket: "parts",
+        Key: part.cad_file,
+      }),
+    );
+
+    console.log("CAD file download response:", response);
+
+    if (response.$metadata.httpStatusCode !== 200) {
+      throw new Error("Failed to download CAD file");
+    }
+
+    if (response.Body) {
+      const body = await response.Body.transformToByteArray();
+
+      const blob = new Blob([body as BlobPart], {
+        type: "application/octet-stream",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = part.cad_file.split("/").pop() || "download";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else {
+      console.error("No data in CAD file response");
+    }
+  } catch (error) {
+    console.error("Error downloading CAD file:", error);
+  }
+}
 
 const getColumns = (): ColumnDef<Part>[] => [
   {
@@ -87,9 +130,13 @@ const getColumns = (): ColumnDef<Part>[] => [
   {
     id: "download",
     header: "Download",
-    cell: ({}) => {
+    cell: ({ row }) => {
       return (
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => await handleFileDownload(row.original)}
+        >
           <Download className="h-5 w-5 text-blue-500" />
         </Button>
       );
@@ -99,15 +146,15 @@ const getColumns = (): ColumnDef<Part>[] => [
     id: "manage",
     header: "Manage",
     cell: ({ row }) => {
-      return <ManagePartDialog part={row.original} />;
+      return <ManagePartDialog partId={row.original.id} />;
     },
   },
 ];
 
-export default function PartTable({}) {
+export default function PartTable({ }) {
   const parts = useMainStore((state) => state.parts);
   const filteredParts = useMainStore((state) => state.filteredParts);
-  const columns = useMemo(() => getColumns(), []);
+  const columns = useMemo(() => getColumns(), [parts]);
   const isLoadingParts = useMainStore((state) => state.isLoadingParts);
 
   const table = useReactTable({
@@ -131,9 +178,9 @@ export default function PartTable({}) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                   </TableHead>
                 );
               })}
