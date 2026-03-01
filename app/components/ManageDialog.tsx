@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ import { Part } from "../interfaces/Part";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
+import { Label } from "@/components/ui/label";
 
 function NumberStepper({
   label,
@@ -143,7 +144,10 @@ function FieldLabelInput({
   );
 }
 
-export function ManagePartDialog({ part }: { part: Part }) {
+export function ManagePartDialog({ partId }: { partId: string }) {
+  const part = useMainStore((state) =>
+    state.parts.find((p) => p.id === partId),
+  )!;
   const machines = useMainStore((state) => state.machines);
   const submitChanges = useActionStore((state) => state.submitChanges);
   const [open, setOpen] = useState(false);
@@ -152,6 +156,29 @@ export function ManagePartDialog({ part }: { part: Part }) {
     part,
     getInitialFormState,
   );
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const uploadCADFile = useActionStore((state) => state.uploadCADFile);
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const result = await uploadCADFile(part.id, file);
+      
+      if (!result.success) {
+        console.error("Error uploading CAD file:", result.error);
+      }
+
+      event.target.files = null;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -328,9 +355,34 @@ export function ManagePartDialog({ part }: { part: Part }) {
               className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
           </Field>
+
+          <Button onClick={() => inputRef.current?.click()}>
+            {part.cad_file ? "Update CAD File" : "Upload CAD File"}
+          </Button>
+
+          <Label className="mt-2">
+            CAD File: {part.cad_file?.split("/").pop() || "No file uploaded"}
+          </Label>
+
+          <input
+            type="file"
+            className="hidden"
+            id="cad-upload"
+            onChange={handleFileChange}
+            ref={inputRef}
+            accept=".step"
+          />
         </FieldGroup>
         <DialogFooter>
-          <Button variant="destructive">Delete</Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              useActionStore.getState().deletePart(part.id);
+              setOpen(false);
+            }}
+          >
+            Delete
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
