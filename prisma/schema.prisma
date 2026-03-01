@@ -23,6 +23,7 @@ model parts {
   create_date DateTime    @default(now()) @db.Timestamptz(6)
   part_number Int
   due_date    DateTime?   @db.Timestamptz(6)
+  cad_file    String?
 }
 
 model machines {

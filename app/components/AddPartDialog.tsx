@@ -144,59 +144,38 @@ function FieldLabelInput({
 }
 
 export default function AddPartDialog() {
-  const addPart = useActionStore((state) => state.addPart);
-  const parts = useMainStore((state) => state.parts);
+  const createAndAddPart = useActionStore((state) => state.createAndAddPart);
   const machines = useMainStore((state) => state.machines);
 
   const [open, setOpen] = useState(false);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
 
-  function handleAddPart() {
+  async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
       console.warn("Name and Creator fields are required.");
       return;
     }
 
-    const maxPartNumber = parts.reduce((max, part) => {
-      return part.part_number > max ? part.part_number : max;
-    }, 0);
+    try {
+      await createAndAddPart({
+        name: formState.name.trim(),
+        machine: formState.machine,
+        project: formState.project,
+        material: formState.material,
+        endmill: formState.endmill,
+        creator: formState.creator.trim(),
+        due_date: formState.dueDate ?? null,
+        status: formState.status,
+        needed: formState.remaining,
+        priority: formState.priority,
+        notes: formState.notes,
+      });
 
-    const newPart: parts = {
-      id: crypto.randomUUID(),
-      name: formState.name.trim(),
-      machine: formState.machine,
-      project: formState.project,
-      material: formState.material,
-      endmill: formState.endmill,
-      creator: formState.creator.trim(),
-      due_date: formState.dueDate ?? null,
-      status: formState.status,
-      needed: formState.remaining,
-      priority: formState.priority,
-      notes: formState.notes,
-      create_date: new Date(), // will be replaced by server time
-      part_number: maxPartNumber + 1,
-    };
-
-    console.log("Adding part:", newPart);
-
-    fetch("/api/parts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newPart),
-    }).then((response) => {
-      if (!response.ok) {
-        console.error("Failed to add part:", response.statusText);
-      } else {
-        console.log("Part added successfully");
-      }
-    });
-
-    addPart(newPart);
-    dispatch({ type: "RESET", payload: initialFormState });
-    setOpen(false);
+      dispatch({ type: "RESET", payload: initialFormState });
+      setOpen(false);
+    } catch (error) {
+      console.error("Failed to add part:", error);
+    }
   }
 
   return (

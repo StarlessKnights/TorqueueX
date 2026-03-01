@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parts } from "@/lib/generated/prisma/client";
+import rustfs_client from "@/lib/rustfs";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export async function GET() {
   try {
@@ -73,6 +75,51 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(
       { error: "Failed to update part" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { id, cadfile } = (await request.json()) as {
+      id: string;
+      cadfile?: string;
+    };
+
+    if (!id) {
+      console.error("Part ID is required for deletion");
+      return NextResponse.json(
+        { error: "Part ID is required for deletion" },
+        { status: 400 },
+      );
+    }
+
+    await prisma.parts.delete({
+      where: { id: id },
+    });
+
+    console.log("Deleted part with ID:", id);
+
+    if (cadfile) {
+      try {
+        await rustfs_client.send(
+          new DeleteObjectCommand({
+            Bucket: "parts",
+            Key: cadfile,
+          }),
+        );
+      } catch (error) {
+        console.error("Failed to delete CAD file:", error);
+      }
+    }
+
+    return NextResponse.json({ message: "Part deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete part:", error);
+
+    return NextResponse.json(
+      { error: "Failed to delete part" },
       { status: 500 },
     );
   }

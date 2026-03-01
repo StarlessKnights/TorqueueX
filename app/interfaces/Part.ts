@@ -15,4 +15,5 @@ export interface Part {
   create_date: Date;
   part_number: number;
   due_date: Date | null;
+  cad_file: string | null;
 }

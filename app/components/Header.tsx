@@ -10,47 +10,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useMainStore } from "../stores/mainStore";
+import { useActionStore } from "../stores/actionStore";
 import { getMachinesFromParts, getProjectsFromParts } from "../utils/parts";
-import { part_status } from "@/lib/generated/prisma/enums";
 
 export default function Header() {
   const parts = useMainStore((state) => state.parts);
   const projects = getProjectsFromParts(parts);
   const machines = getMachinesFromParts(parts);
 
-  const setFilteredParts = useMainStore((state) => state.setFilteredParts);
-
-  function handleProjectSelect(project: string | null) {
-    if (project === null) {
-      setFilteredParts(null);
-    } else {
-      const filtered = parts.filter((part) => part.project === project);
-      setFilteredParts(filtered);
-    }
-  }
-
-  function handleMachineSelect(machine: string | null) {
-    if (machine === null) {
-      setFilteredParts(null);
-    } else {
-      const filtered = parts.filter((part) => part.machine === machine);
-      setFilteredParts(filtered);
-    }
-  }
-
-  function onShowCompleteSelected(showComplete: boolean) {
-    if (showComplete) {
-      setFilteredParts(null);
-    } else {
-      const filtered = parts.filter(
-        (part) => part.status !== part_status.COMPLETE,
-      );
-      setFilteredParts(filtered);
-    }
-  }
+  const filterPartsByProject = useActionStore((state) => state.filterPartsByProject);
+  const filterPartsByMachine = useActionStore((state) => state.filterPartsByMachine);
+  const filterPartsByStatus = useActionStore((state) => state.filterPartsByStatus);
 
   return (
     <header className="border-b bg-black text-white p-4">
@@ -58,14 +31,14 @@ export default function Header() {
         <div className="flex items-center gap-4 justify-self-start">
           <ProjectFilter
             projects={projects}
-            onSelect={(project) => handleProjectSelect(project)}
+            onSelect={(project) => filterPartsByProject(project)}
           />
           <MachineFilter
             machines={machines}
-            onSelect={(machine) => handleMachineSelect(machine)}
+            onSelect={(machine) => filterPartsByMachine(machine)}
           />
           <ShowCompleteFilter
-            onSelect={(showComplete) => onShowCompleteSelected(showComplete)}
+            onSelect={(showComplete) => filterPartsByStatus(showComplete)}
           />
         </div>
         <div className="flex items-center justify-center">
@@ -179,6 +152,10 @@ function ShowCompleteFilter({
   onSelect: (showComplete: boolean) => void;
 }) {
   const [showComplete, setShowComplete] = useState(false);
+
+  useEffect(() => {
+    onSelect(showComplete);
+  }, [showComplete, onSelect]);
 
   return (
     <DropdownMenu>
