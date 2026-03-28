@@ -147,7 +147,12 @@ function FieldLabelInput({
 export function ManagePartDialog({ partId }: { partId: string }) {
   const part = useMainStore((state) =>
     state.parts.find((p) => p.id === partId),
-  )!;
+  );
+
+  if (part === null || part === undefined) {
+    return <div>Not found</div>;
+  }
+
   const machines = useMainStore((state) => state.machines);
   const submitChanges = useActionStore((state) => state.submitChanges);
   const [open, setOpen] = useState(false);
@@ -376,8 +381,8 @@ export function ManagePartDialog({ partId }: { partId: string }) {
           <Button
             variant="destructive"
             onClick={() => {
-              useActionStore.getState().deletePart(part.id);
               setOpen(false);
+              useActionStore.getState().deletePart(part.id);
             }}
           >
             Delete
