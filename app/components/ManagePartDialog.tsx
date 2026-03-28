@@ -169,7 +169,7 @@ export function ManagePartDialog({ partId }: { partId: string }) {
 
     try {
       const result = await uploadCADFile(part.id, file);
-      
+
       if (!result.success) {
         console.error("Error uploading CAD file:", result.error);
       }
@@ -370,7 +370,6 @@ export function ManagePartDialog({ partId }: { partId: string }) {
             id="cad-upload"
             onChange={handleFileChange}
             ref={inputRef}
-            accept=".step"
           />
         </FieldGroup>
         <DialogFooter>

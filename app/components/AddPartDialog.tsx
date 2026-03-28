@@ -29,9 +29,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
-import { Part } from "../interfaces/Part";
 import { part_status } from "@/lib/generated/prisma/enums";
-import { parts } from "@/lib/generated/prisma/client";
 
 type AddFormState = {
   name: string;

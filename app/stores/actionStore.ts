@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useMainStore } from "./mainStore";
-import { FormState } from "../components/ManageDialog";
+import { FormState } from "../components/ManagePartDialog";
 import { Part } from "../interfaces/Part";
 import { parts } from "@/lib/generated/prisma/client";
 import rustfs_client from "@/lib/rustfs";
@@ -14,7 +14,10 @@ type ActionStore = {
   addPart: (newPart: Part) => void;
   createAndAddPart: (formData: Partial<parts>) => Promise<void>;
   deletePart: (partId: string) => void;
-  uploadCADFile: (partId: string, file: File) => Promise<{ success: boolean; error?: string }>;
+  uploadCADFile: (
+    partId: string,
+    file: File,
+  ) => Promise<{ success: boolean; error?: string }>;
   filterPartsByProject: (project: string | null) => void;
   filterPartsByMachine: (machine: string | null) => void;
   filterPartsByStatus: (showComplete: boolean) => void;
@@ -38,12 +41,13 @@ export const useActionStore = create<ActionStore>(() => ({
         throw new Error("Failed to fetch machines");
       }
 
-      const parts = await partsResponse.json();
+      const parts = (await partsResponse.json()) as Part[];
       const machines = (await machinesResponse.json()).map(
         (machine: { name: string }) => machine.name,
       );
 
-      useMainStore.setState({ parts, machines });
+      useMainStore.getState().setParts(parts);
+      useMainStore.getState().setMachines(machines);
     } catch (error) {
       console.error("Failed to fetch parts and machines:", error);
     } finally {
@@ -131,9 +135,11 @@ export const useActionStore = create<ActionStore>(() => ({
   },
   createAndAddPart: async (formData: Partial<parts>) => {
     try {
-      const maxPartNumber = useMainStore.getState().parts.reduce((max, part) => {
-        return part.part_number > max ? part.part_number : max;
-      }, 0);
+      const maxPartNumber = useMainStore
+        .getState()
+        .parts.reduce((max, part) => {
+          return part.part_number > max ? part.part_number : max;
+        }, 0);
 
       const newPart: parts = {
         id: crypto.randomUUID(),

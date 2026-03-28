@@ -20,7 +20,7 @@ import { Check, Download } from "lucide-react";
 import { useMemo } from "react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
-import { ManagePartDialog } from "./ManageDialog";
+import { ManagePartDialog } from "./ManagePartDialog";
 import rustfs_client from "@/lib/rustfs";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 
@@ -75,11 +75,17 @@ const getColumns = (): ColumnDef<Part>[] => [
     header: "Due",
     size: 30,
     cell: ({ getValue }) => {
-      let dueDate = getValue() as string | null;
-      dueDate = dueDate ? dueDate.split("T")[0] : null;
+      let dueDate = getValue();
 
       if (!dueDate) return "N/A";
-      return <span className={""}>{dueDate}</span>;
+      if (typeof dueDate === "string")
+        return <span className={""}>{dueDate.split("T")[0]}</span>;
+      if (typeof dueDate === "object")
+        return (
+          <span className={""}>
+            {(dueDate as Date).toISOString().split("T")[0]}
+          </span>
+        );
     },
   },
   {
@@ -101,10 +107,6 @@ const getColumns = (): ColumnDef<Part>[] => [
   {
     accessorKey: "endmill",
     header: "Endmill",
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
   },
   {
     accessorKey: "needed",
@@ -151,12 +153,13 @@ const getColumns = (): ColumnDef<Part>[] => [
   },
 ];
 
-export default function PartTable({ }) {
+export default function PartTable({}) {
   const parts = useMainStore((state) => state.parts);
   const filteredParts = useMainStore((state) => state.filteredParts);
-  const columns = useMemo(() => getColumns(), [parts]);
+  const columns = useMemo(() => getColumns(), []);
   const isLoadingParts = useMainStore((state) => state.isLoadingParts);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredParts || parts,
     columns,
@@ -178,9 +181,9 @@ export default function PartTable({ }) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 );
               })}
