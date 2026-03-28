@@ -16,18 +16,20 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Check, Download } from "lucide-react";
+import { Check, Download, FileX, FileXCorner, Slash } from "lucide-react";
 import { useMemo } from "react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { ManagePartDialog } from "./ManagePartDialog";
 import rustfs_client from "@/lib/rustfs";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { AlertCircleIcon } from "lucide-react";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 async function handleFileDownload(part: Part) {
   if (!part.cad_file) {
-    console.error("No CAD file to download");
-    return;
+    throw new Error("No CAD File");
   }
 
   try {
@@ -133,13 +135,21 @@ const getColumns = (): ColumnDef<Part>[] => [
     id: "download",
     header: "Download",
     cell: ({ row }) => {
-      return (
+      return row.original.cad_file ? (
         <Button
           variant="outline"
           size="sm"
-          onClick={async () => await handleFileDownload(row.original)}
+          onClick={async () => {
+            await handleFileDownload(row.original);
+          }}
         >
           <Download className="h-5 w-5 text-blue-500" />
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => {}}>
+          <div className="relative inline-flex items-center justify-center">
+            <FileXCorner className="h-5 w-5 text-red-500" />
+          </div>
         </Button>
       );
     },
@@ -220,5 +230,18 @@ export default function PartTable({}) {
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+export function AlertDestructive() {
+  return (
+    <Alert variant="destructive" className="max-w-md">
+      <AlertCircleIcon />
+      <AlertTitle>Payment failed</AlertTitle>
+      <AlertDescription>
+        Your payment could not be processed. Please check your payment method
+        and try again.
+      </AlertDescription>
+    </Alert>
   );
 }
