@@ -306,34 +306,6 @@ export default function AddPartDialog() {
               dispatch({ type: "SET_FIELD", field: "remaining", value })
             }
           />
-          <Field>
-            <FieldLabel htmlFor="status">Status</FieldLabel>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  {formState.status}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  {Object.values(part_status).map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      onClick={() =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "status",
-                          value: status,
-                        })
-                      }
-                    >
-                      {status}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Field>
           <NumberStepper
             label="Priority"
             value={formState.priority}

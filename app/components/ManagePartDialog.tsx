@@ -308,34 +308,6 @@ export function ManagePartDialog({ partId }: { partId: string }) {
               dispatch({ type: "SET_FIELD", field: "needed", value })
             }
           />
-          <Field>
-            <FieldLabel htmlFor="status">Status</FieldLabel>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  {formState.status}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  {Object.values(part_status).map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      onClick={() =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "status",
-                          value: status,
-                        })
-                      }
-                    >
-                      {status}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Field>
           <NumberStepper
             label="Priority"
             value={formState.priority}
@@ -362,7 +334,7 @@ export function ManagePartDialog({ partId }: { partId: string }) {
           </Field>
 
           <Button onClick={() => inputRef.current?.click()}>
-            {part.cad_file ? "Update CAD File" : "Upload CAD File"}
+            {part.cad_file ? "Update CAM File" : "Upload CAM File"}
           </Button>
 
           <Label className="mt-2">
