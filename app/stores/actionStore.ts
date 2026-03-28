@@ -21,6 +21,11 @@ type ActionStore = {
   filterPartsByProject: (project: string | null) => void;
   filterPartsByMachine: (machine: string | null) => void;
   filterPartsByStatus: (showComplete: boolean) => void;
+  filterPartsBySearch: (
+    category: string,
+    searchTerm: string,
+    wasCompleteFiltered: boolean,
+  ) => void;
 };
 
 export const useActionStore = create<ActionStore>(() => ({
@@ -46,7 +51,18 @@ export const useActionStore = create<ActionStore>(() => ({
         (machine: { name: string }) => machine.name,
       );
 
-      useMainStore.getState().setParts(parts);
+      useMainStore.getState().setParts(
+        parts.sort((a, b) => {
+          if (a.needed > 0 && b.needed <= 0) {
+            return -1;
+          } else if (a.needed <= 0 && b.needed > 0) {
+            return 1;
+          } else {
+            return 0;
+          }
+        }),
+      );
+
       useMainStore.getState().setMachines(machines);
     } catch (error) {
       console.error("Failed to fetch parts and machines:", error);
@@ -288,6 +304,37 @@ export const useActionStore = create<ActionStore>(() => ({
       const filtered = allParts.filter(
         (part) => part.status !== part_status.COMPLETE,
       );
+      useMainStore.setState({ filteredParts: filtered });
+    }
+  },
+  filterPartsBySearch: (
+    category: string,
+    searchTerm: string,
+    wasCompleteFiltered,
+  ) => {
+    if (searchTerm === "") {
+      useActionStore.getState().filterPartsByStatus(wasCompleteFiltered);
+      return;
+    }
+
+    if (category === "parts") {
+      let allParts = useMainStore.getState().parts;
+      let filtered = allParts.filter((part) => {
+        return (
+          part.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+          (!wasCompleteFiltered ? part.needed !== 0 : true)
+        );
+      });
+      useMainStore.setState({ filteredParts: filtered });
+    } else if (category === "projects") {
+      let allParts = useMainStore.getState().parts;
+      let filtered = allParts.filter((part) => {
+        return (
+          (part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+            false) &&
+          (!wasCompleteFiltered ? part.needed !== 0 : true)
+        );
+      });
       useMainStore.setState({ filteredParts: filtered });
     }
   },

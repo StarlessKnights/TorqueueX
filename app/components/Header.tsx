@@ -10,35 +10,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { getMachinesFromParts, getProjectsFromParts } from "../utils/parts";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Header() {
   const parts = useMainStore((state) => state.parts);
   const projects = getProjectsFromParts(parts);
   const machines = getMachinesFromParts(parts);
 
-  const filterPartsByProject = useActionStore((state) => state.filterPartsByProject);
-  const filterPartsByMachine = useActionStore((state) => state.filterPartsByMachine);
-  const filterPartsByStatus = useActionStore((state) => state.filterPartsByStatus);
+  const [selectedSearchCategory, setSelectedSearchCategory] = useState("parts");
+  const [isCompleteFiltered, setIsCompleteFiltered] = useState(true);
+
+  const filterPartsByProject = useActionStore(
+    (state) => state.filterPartsByProject,
+  );
+  const filterPartsByMachine = useActionStore(
+    (state) => state.filterPartsByMachine,
+  );
+  const filterPartsByStatus = useActionStore(
+    (state) => state.filterPartsByStatus,
+  );
+  const filterPartsBySearch = useActionStore(
+    (state) => state.filterPartsBySearch,
+  );
 
   return (
     <header className="border-b bg-black text-white p-4">
       <div className="grid h-12 w-full grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-4 justify-self-start">
-          <ProjectFilter
+          {/* <ProjectFilter
             projects={projects}
             onSelect={(project) => filterPartsByProject(project)}
           />
           <MachineFilter
             machines={machines}
             onSelect={(machine) => filterPartsByMachine(machine)}
-          />
+          /> */}
           <ShowCompleteFilter
-            onSelect={(showComplete) => filterPartsByStatus(showComplete)}
+            onSelect={(showComplete) => {
+              filterPartsByStatus(showComplete);
+              setIsCompleteFiltered(showComplete);
+            }}
           />
         </div>
         <div className="flex items-center justify-center">
@@ -53,6 +70,38 @@ export default function Header() {
           >
             TORQUEUE
           </Link>
+        </div>
+        <div className="flex items-center gap-4 justify-self-end">
+          <Tabs defaultValue="parts">
+            <TabsList className="bg-[rgb(15,15,15)] border border-[rgb(48,48,48)]">
+              <TabsTrigger
+                value="parts"
+                onClick={() => {
+                  setSelectedSearchCategory("parts");
+                }}
+              >
+                Parts
+              </TabsTrigger>
+              <TabsTrigger
+                value="projects"
+                onClick={() => {
+                  setSelectedSearchCategory("projects");
+                }}
+              >
+                Projects
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Input
+            placeholder="Search..."
+            onChange={(event) => {
+              filterPartsBySearch(
+                selectedSearchCategory,
+                event.target.value,
+                isCompleteFiltered,
+              );
+            }}
+          />
         </div>
         <div />
       </div>

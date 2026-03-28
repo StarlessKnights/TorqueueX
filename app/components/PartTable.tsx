@@ -212,6 +212,7 @@ export default function PartTable({}) {
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
+                className={row.original.needed === 0 ? "opacity-50" : ""}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-center">
@@ -230,18 +231,5 @@ export default function PartTable({}) {
         </TableBody>
       </Table>
     </div>
-  );
-}
-
-export function AlertDestructive() {
-  return (
-    <Alert variant="destructive" className="max-w-md">
-      <AlertCircleIcon />
-      <AlertTitle>Payment failed</AlertTitle>
-      <AlertDescription>
-        Your payment could not be processed. Please check your payment method
-        and try again.
-      </AlertDescription>
-    </Alert>
   );
 }
