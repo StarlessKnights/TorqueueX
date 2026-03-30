@@ -59,14 +59,11 @@ export const useActionStore = create<ActionStore>(() => ({
 
       useMainStore.getState().setParts(
         parts.sort((a, b) => {
-          if (a.needed > 0 && b.needed <= 0) {
-            return -1;
-          } else if (a.needed <= 0 && b.needed > 0) {
-            return 1;
-          } else {
-            return 0;
-          }
-        }),
+          if (a.needed > 0 && b.needed <= 0) return -1;
+          if (a.needed <= 0 && b.needed > 0) return 1;
+
+          return a.priority - b.priority;
+        })
       );
 
       useMainStore.getState().setMachines(machines);

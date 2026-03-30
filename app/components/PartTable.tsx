@@ -182,8 +182,8 @@ export default function PartTable({ }) {
   });
 
   return (
-    <div className="w-full overflow-hidden border border-zinc-800 rounded-lg shadow-lg shadow-black/30">
-      <Table className="w-full">
+    <div className="w-full overflow-hidden border border-zinc-50 dark:border-zinc-800 rounded-lg shadow-lg shadow-black/30">
+      <Table className="w-full bg-linear-to-br from-[oklch(0.951_0.005_285.823)] to-[oklch(0.871_0.005_285.823)] dark:from-[oklch(0.151_0.005_285.823)] dark:to-[oklch(0.171_0.005_285.823)]">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
