@@ -10,28 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
-import { getMachinesFromParts, getProjectsFromParts } from "../utils/parts";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
 
 export default function Header() {
-  const parts = useMainStore((state) => state.parts);
-  const projects = getProjectsFromParts(parts);
-  const machines = getMachinesFromParts(parts);
-
   const [selectedSearchCategory, setSelectedSearchCategory] = useState("parts");
   const [isCompleteFiltered, setIsCompleteFiltered] = useState(true);
 
-  const filterPartsByProject = useActionStore(
-    (state) => state.filterPartsByProject,
-  );
-  const filterPartsByMachine = useActionStore(
-    (state) => state.filterPartsByMachine,
-  );
   const filterPartsByStatus = useActionStore(
     (state) => state.filterPartsByStatus,
   );
@@ -43,14 +32,6 @@ export default function Header() {
     <header className="border-b bg-black text-white p-4">
       <div className="grid h-12 w-full grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-4 justify-self-start">
-          {/* <ProjectFilter
-            projects={projects}
-            onSelect={(project) => filterPartsByProject(project)}
-          />
-          <MachineFilter
-            machines={machines}
-            onSelect={(machine) => filterPartsByMachine(machine)}
-          /> */}
           <ShowCompleteFilter
             onSelect={(showComplete) => {
               filterPartsByStatus(showComplete);
@@ -59,11 +40,7 @@ export default function Header() {
           />
         </div>
         <div className="flex items-center justify-center">
-          <img
-            src="/torqueLogo.png"
-            alt="Torqueue Logo"
-            className="h-12 w-12"
-          />
+          <Image height="48" width="48" src="/torqueLogo.png" alt="Torqueue Logo" />
           <Link
             href="/"
             className={`${marketDeco.className} text-3xl font-semibold`}
@@ -109,6 +86,7 @@ export default function Header() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProjectFilter({
   projects,
   onSelect,
@@ -152,6 +130,7 @@ function ProjectFilter({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MachineFilter({
   machines,
   onSelect,
