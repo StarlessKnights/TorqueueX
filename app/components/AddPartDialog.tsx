@@ -30,6 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
+import { toast } from "sonner";
 
 type AddFormState = {
   name: string;
@@ -144,13 +145,14 @@ function FieldLabelInput({
 export default function AddPartDialog() {
   const createAndAddPart = useActionStore((state) => state.createAndAddPart);
   const machines = useMainStore((state) => state.machines);
+  const projects = useMainStore((state) => state.projects);
 
   const [open, setOpen] = useState(false);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
 
   async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
-      console.warn("Name and Creator fields are required.");
+      toast.warning("Name and Creator fields are required.")
       return;
     }
 
@@ -171,8 +173,10 @@ export default function AddPartDialog() {
 
       dispatch({ type: "RESET", payload: initialFormState });
       setOpen(false);
-    } catch (error) {
-      console.error("Failed to add part:", error);
+
+      toast.success("Sucessfully added part!")
+    } catch {
+      toast.error("Failed to add part")
     }
   }
 
@@ -243,13 +247,46 @@ export default function AddPartDialog() {
               </DropdownMenuContent>
             </DropdownMenu>
           </Field>
-          <FieldLabelInput
-            label="Project"
-            value={formState.project || ""}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "project", value })
-            }
-          />
+          <Field>
+            <FieldLabel htmlFor="project">Project</FieldLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full">
+                  {formState.project || "Select project"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    key="none"
+                    onClick={() =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "project",
+                        value: null,
+                      })
+                    }
+                  >
+                    None
+                  </DropdownMenuItem>
+                  {projects.map((project) => (
+                    <DropdownMenuItem
+                      key={project}
+                      onClick={() =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "project",
+                          value: project,
+                        })
+                      }
+                    >
+                      {project}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
           <FieldLabelInput
             label="Material"
             value={formState.material || ""}

@@ -16,16 +16,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Check, Download, FileX, FileXCorner, Slash } from "lucide-react";
+import { Check, Download, FileXCorner } from "lucide-react";
 import { useMemo } from "react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { ManagePartDialog } from "./ManagePartDialog";
 import rustfs_client from "@/lib/rustfs";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { AlertCircleIcon } from "lucide-react";
-
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 async function handleFileDownload(part: Part) {
   if (!part.cad_file) {
@@ -39,8 +37,6 @@ async function handleFileDownload(part: Part) {
         Key: part.cad_file,
       }),
     );
-
-    console.log("CAD file download response:", response);
 
     if (response.$metadata.httpStatusCode !== 200) {
       throw new Error("Failed to download CAD file");
@@ -77,7 +73,7 @@ const getColumns = (): ColumnDef<Part>[] => [
     header: "Due",
     size: 30,
     cell: ({ getValue }) => {
-      let dueDate = getValue();
+      const dueDate = getValue();
 
       if (!dueDate) return "N/A";
       if (typeof dueDate === "string")
@@ -122,8 +118,17 @@ const getColumns = (): ColumnDef<Part>[] => [
         <Button
           variant="outline"
           size="sm"
-          onClick={() =>
-            useActionStore.getState().completePart(row.original.id)
+          onClick={async () => {
+            try {
+              await useActionStore.getState().completePart(row.original.id)
+
+              toast.success("Successfully completed part!");
+            } catch (e: unknown) {
+              if (e instanceof Error) {
+                toast.error(e.message)
+              }
+            }
+          }
           }
         >
           <Check className="h-5 w-5 text-green-500" />
@@ -146,11 +151,11 @@ const getColumns = (): ColumnDef<Part>[] => [
           <Download className="h-5 w-5 text-blue-500" />
         </Button>
       ) : (
-        <Button variant="outline" size="sm" onClick={() => {}}>
+        <Button variant="outline" size="sm" onClick={() => { toast.error("No file to download") }}>
           <div className="relative inline-flex items-center justify-center">
             <FileXCorner className="h-5 w-5 text-red-500" />
           </div>
-        </Button>
+        </Button >
       );
     },
   },
@@ -163,7 +168,7 @@ const getColumns = (): ColumnDef<Part>[] => [
   },
 ];
 
-export default function PartTable({}) {
+export default function PartTable({ }) {
   const parts = useMainStore((state) => state.parts);
   const filteredParts = useMainStore((state) => state.filteredParts);
   const columns = useMemo(() => getColumns(), []);
@@ -191,9 +196,9 @@ export default function PartTable({}) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                   </TableHead>
                 );
               })}
