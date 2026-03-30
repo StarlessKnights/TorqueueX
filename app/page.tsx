@@ -8,7 +8,7 @@ import AddPartDialog from "./components/AddPartDialog";
 
 export default function Home() {
   const fetchPartsAndMachines = useActionStore(
-    (state) => state.fetchPartsAndMachines,
+    (state) => state.fetchData,
   );
 
   useEffect(() => {

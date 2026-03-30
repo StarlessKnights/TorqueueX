@@ -32,6 +32,7 @@ import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 function NumberStepper({
   label,
@@ -153,7 +154,13 @@ export function ManagePartDialog({ partId }: { partId: string }) {
     return <div>Not found</div>;
   }
 
+  return PartForm(part);
+}
+
+function PartForm(part: Part) {
+
   const machines = useMainStore((state) => state.machines);
+  const projects = useMainStore((state) => state.projects);
   const submitChanges = useActionStore((state) => state.submitChanges);
   const [open, setOpen] = useState(false);
   const [formState, dispatch] = useReducer(
@@ -235,13 +242,34 @@ export function ManagePartDialog({ partId }: { partId: string }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </Field>
-          <FieldLabelInput
-            label="Project"
-            value={formState.project || ""}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "project", value })
-            }
-          />
+          <Field>
+            <FieldLabel htmlFor="project">project</FieldLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full">
+                  {formState.project}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuGroup>
+                  {projects.map((project) => (
+                    <DropdownMenuItem
+                      key={project}
+                      onClick={() =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "machine",
+                          value: project,
+                        })
+                      }
+                    >
+                      {project}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
           <FieldLabelInput
             label="Material"
             value={formState.material || ""}
@@ -338,7 +366,7 @@ export function ManagePartDialog({ partId }: { partId: string }) {
           </Button>
 
           <Label className="mt-2">
-            CAD File: {part.cad_file?.split("/").pop() || "No file uploaded"}
+            CAM File: {part.cad_file?.split("/").pop() || "No file uploaded"}
           </Label>
 
           <input
@@ -352,17 +380,34 @@ export function ManagePartDialog({ partId }: { partId: string }) {
         <DialogFooter>
           <Button
             variant="destructive"
-            onClick={() => {
+            onClick={async () => {
               setOpen(false);
-              useActionStore.getState().deletePart(part.id);
+
+              try {
+                await useActionStore.getState().deletePart(part.id);
+
+                toast.success("Successfully deleted part!")
+              } catch (e: unknown) {
+                if (e instanceof Error) {
+                  toast.error(e.message)
+                }
+              }
             }}
           >
             Delete
           </Button>
           <Button
             variant="outline"
-            onClick={() => {
-              submitChanges(part.id, formState);
+            onClick={async () => {
+              try {
+                await submitChanges(part.id, formState);
+
+                toast.success("Sucessfully saved changes!")
+              } catch (e: unknown) {
+                if (e instanceof Error) {
+                  toast.error(e.message);
+                }
+              }
               setOpen(false);
             }}
           >

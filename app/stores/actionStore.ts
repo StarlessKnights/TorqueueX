@@ -8,12 +8,12 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { part_status } from "@/lib/generated/prisma/enums";
 
 type ActionStore = {
-  fetchPartsAndMachines: () => Promise<void>;
-  completePart: (partId: string) => void;
-  submitChanges: (partId: string, updatedData: Partial<FormState>) => void;
+  fetchData: () => Promise<void>;
+  completePart: (partId: string) => Promise<void>;
+  submitChanges: (partId: string, updatedData: Partial<FormState>) => Promise<void>;
   addPart: (newPart: Part) => void;
   createAndAddPart: (formData: Partial<parts>) => Promise<void>;
-  deletePart: (partId: string) => void;
+  deletePart: (partId: string) => Promise<void>;
   uploadCADFile: (
     partId: string,
     file: File,
@@ -29,13 +29,14 @@ type ActionStore = {
 };
 
 export const useActionStore = create<ActionStore>(() => ({
-  fetchPartsAndMachines: async () => {
+  fetchData: async () => {
     try {
       useMainStore.setState({ isLoadingParts: true });
 
-      const [partsResponse, machinesResponse] = await Promise.all([
+      const [partsResponse, machinesResponse, projectsResponse] = await Promise.all([
         fetch("/api/parts"),
         fetch("/api/machines"),
+        fetch("/api/projects")
       ]);
 
       if (!partsResponse.ok) {
@@ -46,10 +47,15 @@ export const useActionStore = create<ActionStore>(() => ({
         throw new Error("Failed to fetch machines");
       }
 
+      if (!projectsResponse.ok) {
+        throw new Error("Failed to fetch projects");
+      }
+
       const parts = (await partsResponse.json()) as Part[];
       const machines = (await machinesResponse.json()).map(
         (machine: { name: string }) => machine.name,
       );
+      const projects = (await projectsResponse.json()).map((project: { name: string }) => project.name);
 
       useMainStore.getState().setParts(
         parts.sort((a, b) => {
@@ -64,21 +70,21 @@ export const useActionStore = create<ActionStore>(() => ({
       );
 
       useMainStore.getState().setMachines(machines);
+      useMainStore.getState().setProjects(projects);
     } catch (error) {
-      console.error("Failed to fetch parts and machines:", error);
+      console.error("Failed to fetch parts, machines, or projects:", error);
     } finally {
       useMainStore.setState({ isLoadingParts: false });
     }
   },
-  completePart: (partId: string) => {
+  completePart: async (partId: string) => {
     const part = useMainStore.getState().parts.find((p) => p.id === partId);
 
     if (!part) {
-      console.error("Part not found for completion:", partId);
-      return;
+      throw new Error("No part found")
     }
 
-    fetch("/api/parts/complete", {
+    await fetch("/api/parts/complete", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -89,11 +95,10 @@ export const useActionStore = create<ActionStore>(() => ({
         if (!response.ok) {
           throw new Error("Failed to complete part");
         }
+
         return response.json();
       })
       .then((data) => {
-        console.log("Successfully completed part on backend:", data);
-
         useMainStore.setState((state) => {
           const updatedParts = state.parts.map((p) => {
             if (p.id === partId) {
@@ -108,19 +113,12 @@ export const useActionStore = create<ActionStore>(() => ({
           return { parts: updatedParts };
         });
       })
-      .catch((error) => {
-        console.error("Error completing part on backend:", error);
+      .catch(() => {
+        throw new Error("Error completing part on backend");
       });
   },
-  submitChanges: (partId: string, updatedData: Partial<FormState>) => {
-    console.log(
-      "Submitting changes for partId:",
-      partId,
-      "with data:",
-      updatedData,
-    );
-
-    fetch("/api/parts", {
+  submitChanges: async (partId: string, updatedData: Partial<FormState>) => {
+    await fetch("/api/parts", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -134,14 +132,12 @@ export const useActionStore = create<ActionStore>(() => ({
         return response.json();
       })
       .then((data: parts) => {
-        console.log("Successfully updated part on backend:", data);
-
         useMainStore.setState((state) => ({
           parts: state.parts.map((part) => (part.id === partId ? data : part)),
         }));
       })
-      .catch((error) => {
-        console.error("Error updating part on backend:", error);
+      .catch(() => {
+        throw new Error("Error updating part on backend");
       });
   },
   addPart: (newPart: Part) => {
@@ -193,8 +189,8 @@ export const useActionStore = create<ActionStore>(() => ({
       throw error;
     }
   },
-  deletePart: (partId: string) => {
-    fetch("/api/parts", {
+  deletePart: async (partId: string) => {
+    await fetch("/api/parts", {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -208,14 +204,12 @@ export const useActionStore = create<ActionStore>(() => ({
         return response.json();
       })
       .then(() => {
-        console.log("Successfully deleted part on backend");
-
         useMainStore.setState((state) => ({
           parts: state.parts.filter((p) => p.id !== partId),
         }));
       })
       .catch((error) => {
-        console.error("Error deleting part on backend:", error);
+        throw new Error("Error deleting part on backend:", error);
       });
   },
   uploadCADFile: async (partId: string, file: File) => {
@@ -318,8 +312,8 @@ export const useActionStore = create<ActionStore>(() => ({
     }
 
     if (category === "parts") {
-      let allParts = useMainStore.getState().parts;
-      let filtered = allParts.filter((part) => {
+      const allParts = useMainStore.getState().parts;
+      const filtered = allParts.filter((part) => {
         return (
           part.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
           (!wasCompleteFiltered ? part.needed !== 0 : true)
@@ -327,8 +321,8 @@ export const useActionStore = create<ActionStore>(() => ({
       });
       useMainStore.setState({ filteredParts: filtered });
     } else if (category === "projects") {
-      let allParts = useMainStore.getState().parts;
-      let filtered = allParts.filter((part) => {
+      const allParts = useMainStore.getState().parts;
+      const filtered = allParts.filter((part) => {
         return (
           (part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ??
             false) &&
