@@ -8,14 +8,12 @@ export async function GET() {
   try {
     const parts = await prisma.parts.findMany();
 
-    console.log("Fetched parts:", parts);
-
     return NextResponse.json(parts);
   } catch (error) {
     console.error("Failed to fetch parts:", error);
 
     return NextResponse.json(
-      { error: "Failed to fetch parts" },
+      { error: "Failed to fetch parts:" + error },
       { status: 500 },
     );
   }
@@ -66,8 +64,6 @@ export async function PUT(request: Request) {
       where: { id: data.id },
       data: data,
     });
-
-    console.log("Updated part:", updatedPart);
 
     return NextResponse.json(updatedPart);
   } catch (error) {

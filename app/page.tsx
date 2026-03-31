@@ -35,6 +35,7 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
+        <AddPartDialog />
       </div>
     </div>
   );
