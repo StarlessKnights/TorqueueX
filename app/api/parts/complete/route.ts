@@ -5,12 +5,9 @@ export async function POST(request: Request) {
   try {
     const { partId } = await request.json();
 
-    console.log("Completing part:", partId);
-
     const part = await prisma.parts.findUnique({ where: { id: partId } });
 
     if (!part) {
-      console.error("Part not found for completion:", partId);
       return NextResponse.json({ error: "Part not found" }, { status: 404 });
     }
 
@@ -31,8 +28,7 @@ export async function POST(request: Request) {
       newStatus: part.needed > 1 ? part.status : "COMPLETE",
       newNeeded: part.needed > 1 ? part.needed - 1 : 0,
     });
-  } catch (error) {
-    console.error("Failed to complete part:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to complete part" },
       { status: 500 },

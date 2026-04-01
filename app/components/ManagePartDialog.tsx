@@ -158,7 +158,6 @@ export function ManagePartDialog({ partId }: { partId: string }) {
 }
 
 function PartForm(part: Part) {
-
   const machines = useMainStore((state) => state.machines);
   const projects = useMainStore((state) => state.projects);
   const submitChanges = useActionStore((state) => state.submitChanges);
@@ -183,7 +182,9 @@ function PartForm(part: Part) {
       const result = await uploadCADFile(part.id, file);
 
       if (!result.success) {
-        console.error("Error uploading CAD file:", result.error);
+        toast.error("Error uploading CAM file");
+      } else {
+        toast.success("Successfully uploaded CAM file!");
       }
 
       event.target.files = null;
@@ -243,7 +244,7 @@ function PartForm(part: Part) {
             </DropdownMenu>
           </Field>
           <Field>
-            <FieldLabel htmlFor="project">project</FieldLabel>
+            <FieldLabel htmlFor="project">Project</FieldLabel>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full">

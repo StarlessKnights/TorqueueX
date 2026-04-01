@@ -12,21 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { useActionStore } from "../stores/actionStore";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
+import { useMainStore } from "../stores/mainStore";
 
 export default function Header() {
   const [selectedSearchCategory, setSelectedSearchCategory] = useState("parts");
-  const [isCompleteFiltered, setIsCompleteFiltered] = useState(true);
-
-  const filterPartsByStatus = useActionStore(
-    (state) => state.filterPartsByStatus,
-  );
-  const filterPartsBySearch = useActionStore(
-    (state) => state.filterPartsBySearch,
-  );
 
   return (
     <header className="border-b bg-black text-white p-4">
@@ -34,8 +26,7 @@ export default function Header() {
         <div className="flex items-center gap-4 justify-self-start">
           <ShowCompleteFilter
             onSelect={(showComplete) => {
-              filterPartsByStatus(showComplete);
-              setIsCompleteFiltered(showComplete);
+              useMainStore.setState({ showComplete: showComplete });
             }}
           />
         </div>
@@ -72,11 +63,7 @@ export default function Header() {
           <Input
             placeholder="Search..."
             onChange={(event) => {
-              filterPartsBySearch(
-                selectedSearchCategory,
-                event.target.value,
-                isCompleteFiltered,
-              );
+              useMainStore.setState({ searchTerm: event.target.value, searchType: selectedSearchCategory });
             }}
           />
         </div>
