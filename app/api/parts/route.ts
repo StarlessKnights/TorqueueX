@@ -24,8 +24,6 @@ export async function POST(request: Request) {
   try {
     const data = (await request.json()) as parts;
 
-    console.log("Received new part data:", data);
-
     const newPart = await prisma.parts.create({
       data: {
         ...data,
@@ -33,12 +31,8 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log("Created new part:", newPart);
-
     return NextResponse.json(newPart, { status: 201 });
-  } catch (error) {
-    console.error("Failed to create part:", error);
-
+  } catch {
     return NextResponse.json(
       { error: "Failed to create part" },
       { status: 500 },
@@ -50,10 +44,7 @@ export async function PUT(request: Request) {
   try {
     const data = (await request.json()) as parts;
 
-    console.log("Received updated part data:", data);
-
     if (!data.id) {
-      console.error("Part ID is required for update");
       return NextResponse.json(
         { error: "Part ID is required for update" },
         { status: 400 },
@@ -66,9 +57,7 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json(updatedPart);
-  } catch (error) {
-    console.error("Failed to update part:", error);
-
+  } catch {
     return NextResponse.json(
       { error: "Failed to update part" },
       { status: 500 },
@@ -84,7 +73,6 @@ export async function DELETE(request: Request) {
     };
 
     if (!id) {
-      console.error("Part ID is required for deletion");
       return NextResponse.json(
         { error: "Part ID is required for deletion" },
         { status: 400 },
@@ -94,8 +82,6 @@ export async function DELETE(request: Request) {
     await prisma.parts.delete({
       where: { id: id },
     });
-
-    console.log("Deleted part with ID:", id);
 
     if (cadfile) {
       try {

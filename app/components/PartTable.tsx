@@ -21,8 +21,6 @@ import { useMemo } from "react";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { ManagePartDialog } from "./ManagePartDialog";
-import rustfs_client from "@/lib/rustfs";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { toast } from "sonner";
 
 async function handleFileDownload(part: Part) {
@@ -31,35 +29,22 @@ async function handleFileDownload(part: Part) {
   }
 
   try {
-    const response = await rustfs_client.send(
-      new GetObjectCommand({
-        Bucket: "parts",
-        Key: part.cad_file,
-      }),
-    );
+    const response = await fetch(`/api/parts/download-cam?file=${encodeURIComponent(part.cad_file)}`);
 
-    if (response.$metadata.httpStatusCode !== 200) {
+    if (!response.ok) {
       throw new Error("Failed to download CAD file");
     }
 
-    if (response.Body) {
-      const body = await response.Body.transformToByteArray();
-
-      const blob = new Blob([body as BlobPart], {
-        type: "application/octet-stream",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = part.cad_file.split("/").pop() || "download";
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } else {
-      console.error("No data in CAD file response");
-    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = part.cad_file.split("/").pop() || "download";
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Error downloading CAD file:", error);
+    throw error;
   }
 }
 
@@ -145,7 +130,13 @@ const getColumns = (): ColumnDef<Part>[] => [
           variant="outline"
           size="sm"
           onClick={async () => {
-            await handleFileDownload(row.original);
+            try {
+              await handleFileDownload(row.original);
+
+              toast.success("Successfully downloaded CAM!")
+            } catch {
+              toast.error("Unable to download CAM")
+            }
           }}
         >
           <Download className="h-5 w-5 text-blue-500" />
@@ -170,7 +161,30 @@ const getColumns = (): ColumnDef<Part>[] => [
 
 export default function PartTable({ }) {
   const parts = useMainStore((state) => state.parts);
-  const filteredParts = useMainStore((state) => state.filteredParts);
+
+  const showComplete = useMainStore((state) => state.showComplete);
+  const searchTerm = useMainStore((state) => state.searchTerm);
+  const searchType = useMainStore((state) => state.searchType);
+
+  const filteredParts = useMemo(() => {
+    let tempParts: Part[] = parts;
+
+    tempParts = showComplete ? tempParts : tempParts.filter((part) => { return part.needed > 0; });
+
+    if (searchTerm != "") {
+      switch (searchType) {
+        case "projects":
+          tempParts = tempParts.filter((part) => { return part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false; });
+          break;
+        case "parts":
+          tempParts = tempParts.filter((part) => { return part.name.toLowerCase().includes(searchTerm.toLowerCase()) });
+          break;
+      }
+    }
+
+    return tempParts;
+  }, [parts, showComplete, searchTerm, searchType]);
+
   const columns = useMemo(() => getColumns(), []);
   const isLoadingParts = useMainStore((state) => state.isLoadingParts);
 

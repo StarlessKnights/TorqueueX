@@ -3,8 +3,6 @@ import { useMainStore } from "./mainStore";
 import { FormState } from "../components/ManagePartDialog";
 import { Part } from "../interfaces/Part";
 import { parts } from "@/lib/generated/prisma/client";
-import rustfs_client from "@/lib/rustfs";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { part_status } from "@/lib/generated/prisma/enums";
 
 type ActionStore = {
@@ -18,14 +16,6 @@ type ActionStore = {
     partId: string,
     file: File,
   ) => Promise<{ success: boolean; error?: string }>;
-  filterPartsByProject: (project: string | null) => void;
-  filterPartsByMachine: (machine: string | null) => void;
-  filterPartsByStatus: (showComplete: boolean) => void;
-  filterPartsBySearch: (
-    category: string,
-    searchTerm: string,
-    wasCompleteFiltered: boolean,
-  ) => void;
 };
 
 export const useActionStore = create<ActionStore>(() => ({
@@ -211,27 +201,24 @@ export const useActionStore = create<ActionStore>(() => ({
   },
   uploadCADFile: async (partId: string, file: File) => {
     try {
-      // S3 Upload
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("partId", partId);
 
-      const s3Response = await rustfs_client.send(
-        new PutObjectCommand({
-          Bucket: "parts",
-          Key: `${partId}/${file.name}`,
-          Body: uint8Array,
-          ContentType: file.type,
-        }),
-      );
+      const uploadResponse = await fetch("/api/parts/upload-cam", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (s3Response.$metadata.httpStatusCode !== 200) {
+      if (!uploadResponse.ok) {
         return {
           success: false,
-          error: "Failed to upload file to S3",
+          error: "Failed to upload CAD file",
         };
       }
 
-      // API Update
+      const uploadData = await uploadResponse.json();
+
       const apiResponse = await fetch("/api/parts", {
         method: "PUT",
         headers: {
@@ -239,7 +226,7 @@ export const useActionStore = create<ActionStore>(() => ({
         },
         body: JSON.stringify({
           id: partId,
-          cad_file: `${partId}/${file.name}`,
+          cad_file: uploadData.cadFilePath,
         }),
       });
 
@@ -251,7 +238,6 @@ export const useActionStore = create<ActionStore>(() => ({
       }
 
       const updatedPart: parts = await apiResponse.json();
-      console.log("Successfully updated part with CAD file:", updatedPart);
 
       // Update mainStore using proper setState
       useMainStore.setState((state) => ({
@@ -262,71 +248,10 @@ export const useActionStore = create<ActionStore>(() => ({
 
       return { success: true };
     } catch (error) {
-      console.error("Error uploading CAD file:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
-  },
-  filterPartsByProject: (project: string | null) => {
-    const allParts = useMainStore.getState().parts;
-    if (project === null) {
-      useMainStore.setState({ filteredParts: null });
-    } else {
-      const filtered = allParts.filter((part) => part.project === project);
-      useMainStore.setState({ filteredParts: filtered });
-    }
-  },
-  filterPartsByMachine: (machine: string | null) => {
-    const allParts = useMainStore.getState().parts;
-    if (machine === null) {
-      useMainStore.setState({ filteredParts: null });
-    } else {
-      const filtered = allParts.filter((part) => part.machine === machine);
-      useMainStore.setState({ filteredParts: filtered });
-    }
-  },
-  filterPartsByStatus: (showComplete: boolean) => {
-    const allParts = useMainStore.getState().parts;
-    if (showComplete) {
-      useMainStore.setState({ filteredParts: null });
-    } else {
-      const filtered = allParts.filter(
-        (part) => part.status !== part_status.COMPLETE,
-      );
-      useMainStore.setState({ filteredParts: filtered });
-    }
-  },
-  filterPartsBySearch: (
-    category: string,
-    searchTerm: string,
-    wasCompleteFiltered,
-  ) => {
-    if (searchTerm === "") {
-      useActionStore.getState().filterPartsByStatus(wasCompleteFiltered);
-      return;
-    }
-
-    if (category === "parts") {
-      const allParts = useMainStore.getState().parts;
-      const filtered = allParts.filter((part) => {
-        return (
-          part.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-          (!wasCompleteFiltered ? part.needed !== 0 : true)
-        );
-      });
-      useMainStore.setState({ filteredParts: filtered });
-    } else if (category === "projects") {
-      const allParts = useMainStore.getState().parts;
-      const filtered = allParts.filter((part) => {
-        return (
-          (part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ??
-            false) &&
-          (!wasCompleteFiltered ? part.needed !== 0 : true)
-        );
-      });
-      useMainStore.setState({ filteredParts: filtered });
-    }
-  },
+  }
 }));
