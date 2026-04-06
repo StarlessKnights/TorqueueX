@@ -163,6 +163,7 @@ export default function AddPartDialog() {
   const projects = useMainStore((state) => state.projects);
 
   const [open, setOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
@@ -370,7 +371,7 @@ export default function AddPartDialog() {
           />
           <Field>
             <FieldLabel htmlFor="due">Due</FieldLabel>
-            <Popover>
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -384,13 +385,14 @@ export default function AddPartDialog() {
                 <Calendar
                   mode="single"
                   selected={formState.dueDate}
-                  onSelect={(date) =>
+                  onSelect={(date) => {
                     dispatch({
                       type: "SET_FIELD",
                       field: "dueDate",
                       value: date,
-                    })
-                  }
+                    });
+                  }}
+                  onDayClick={() => setDueDateOpen(false)}
                   defaultMonth={formState.dueDate}
                 />
               </PopoverContent>

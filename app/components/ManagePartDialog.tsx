@@ -174,6 +174,7 @@ function PartForm(part: Part) {
   const projects = useMainStore((state) => state.projects);
   const submitChanges = useActionStore((state) => state.submitChanges);
   const [open, setOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [formState, dispatch] = useReducer(
     formReducer,
     part,
@@ -339,7 +340,7 @@ function PartForm(part: Part) {
           />
           <Field>
             <FieldLabel htmlFor="due">Due</FieldLabel>
-            <Popover>
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -359,13 +360,14 @@ function PartForm(part: Part) {
                       ? new Date(formState.due_date)
                       : undefined
                   }
-                  onSelect={(date) =>
+                  onSelect={(date) => {
                     dispatch({
                       type: "SET_FIELD",
                       field: "due_date",
                       value: date,
-                    })
-                  }
+                    });
+                  }}
+                  onDayClick={() => setDueDateOpen(false)}
                   defaultMonth={
                     formState.due_date
                       ? new Date(formState.due_date)
