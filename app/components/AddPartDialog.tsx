@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
@@ -143,45 +144,92 @@ function FieldLabelInput({
 }
 
 export default function AddPartDialog() {
-  const createAndAddPart = useActionStore((state) => state.createAndAddPart);
+  const createPartWithOptionalCAM = useActionStore(
+    (state) => state.createPartWithOptionalCAM,
+  );
   const machines = useMainStore((state) => state.machines);
   const projects = useMainStore((state) => state.projects);
 
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function resetForm() {
+    dispatch({ type: "RESET", payload: initialFormState });
+    setSelectedCAMFile(null);
+  }
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      resetForm();
+    }
+  }
+
+  function handleCAMFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 52428800) {
+      toast.error("File Upload Limit: 50 MB");
+      event.target.value = "";
+      return;
+    }
+
+    setSelectedCAMFile(file);
+    event.target.value = "";
+  }
 
   async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
-      toast.warning("Name and Creator fields are required.")
+      toast.warning("Name and Creator fields are required.");
       return;
     }
 
     try {
-      await createAndAddPart({
-        name: formState.name.trim(),
-        machine: formState.machine,
-        project: formState.project,
-        material: formState.material,
-        endmill: formState.endmill,
-        creator: formState.creator.trim(),
-        due_date: formState.dueDate ?? null,
-        status: formState.status,
-        needed: formState.remaining,
-        priority: formState.priority,
-        notes: formState.notes,
-      });
+      setIsSubmitting(true);
 
-      dispatch({ type: "RESET", payload: initialFormState });
+      await createPartWithOptionalCAM(
+        {
+          name: formState.name.trim(),
+          machine: formState.machine,
+          project: formState.project,
+          material: formState.material,
+          endmill: formState.endmill,
+          creator: formState.creator.trim(),
+          due_date: formState.dueDate ?? null,
+          status: formState.status,
+          needed: formState.remaining,
+          priority: formState.priority,
+          notes: formState.notes,
+        },
+        selectedCAMFile,
+      );
+
+      resetForm();
       setOpen(false);
 
-      toast.success("Sucessfully added part!")
-    } catch {
-      toast.error("Failed to add part")
+      toast.success("Successfully added part!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add part",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button
           size="icon"
@@ -367,10 +415,49 @@ export default function AddPartDialog() {
               className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
           </Field>
+
+          <Field>
+            <FieldLabel>CAM File</FieldLabel>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => inputRef.current?.click()}
+                disabled={isSubmitting}
+              >
+                {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
+              </Button>
+              {selectedCAMFile ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCAMFile(null)}
+                  disabled={isSubmitting}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+            <Label className="mt-2 block">
+              CAM File: {selectedCAMFile?.name || "No file selected"}
+            </Label>
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              onChange={handleCAMFileSelect}
+            />
+          </Field>
         </FieldGroup>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleAddPart}>
+          <Button
+            variant="outline"
+            onClick={handleAddPart}
+            disabled={isSubmitting}
+          >
             Add Part
           </Button>
         </DialogFooter>

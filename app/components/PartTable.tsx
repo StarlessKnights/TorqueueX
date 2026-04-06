@@ -25,14 +25,16 @@ import { toast } from "sonner";
 
 async function handleFileDownload(part: Part) {
   if (!part.cad_file) {
-    throw new Error("No CAD File");
+    throw new Error("No CAM File");
   }
 
   try {
-    const response = await fetch(`/api/parts/download-cam?file=${encodeURIComponent(part.cad_file)}`);
+    const response = await fetch(
+      `/api/parts/download-cam?file=${encodeURIComponent(part.cad_file)}`,
+    );
 
     if (!response.ok) {
-      throw new Error("Failed to download CAD file");
+      throw new Error("Failed to download CAM file");
     }
 
     const blob = await response.blob();
@@ -105,16 +107,15 @@ const getColumns = (): ColumnDef<Part>[] => [
           size="sm"
           onClick={async () => {
             try {
-              await useActionStore.getState().completePart(row.original.id)
+              await useActionStore.getState().completePart(row.original.id);
 
               toast.success("Successfully completed part!");
             } catch (e: unknown) {
               if (e instanceof Error) {
-                toast.error(e.message)
+                toast.error(e.message);
               }
             }
-          }
-          }
+          }}
         >
           <Check className="h-5 w-5 text-green-500" />
         </Button>
@@ -133,20 +134,26 @@ const getColumns = (): ColumnDef<Part>[] => [
             try {
               await handleFileDownload(row.original);
 
-              toast.success("Successfully downloaded CAM!")
+              toast.success("Successfully downloaded CAM!");
             } catch {
-              toast.error("Unable to download CAM")
+              toast.error("Unable to download CAM");
             }
           }}
         >
           <Download className="h-5 w-5 text-blue-500" />
         </Button>
       ) : (
-        <Button variant="outline" size="sm" onClick={() => { toast.error("No file to download") }}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            toast.error("No file to download");
+          }}
+        >
           <div className="relative inline-flex items-center justify-center">
             <FileXCorner className="h-5 w-5 text-red-500" />
           </div>
-        </Button >
+        </Button>
       );
     },
   },
@@ -159,7 +166,7 @@ const getColumns = (): ColumnDef<Part>[] => [
   },
 ];
 
-export default function PartTable({ }) {
+export default function PartTable({}) {
   const parts = useMainStore((state) => state.parts);
 
   const showComplete = useMainStore((state) => state.showComplete);
@@ -171,23 +178,51 @@ export default function PartTable({ }) {
   const filteredParts = useMemo(() => {
     let tempParts: Part[] = parts;
 
-    tempParts = showComplete ? tempParts : tempParts.filter((part) => { return part.needed > 0; });
-    tempParts = projectFilter == null ? tempParts : tempParts.filter((part) => { return part.project === projectFilter; });
-    tempParts = machineFilter == null ? tempParts : tempParts.filter((part) => { return part.machine === machineFilter; });
+    tempParts = showComplete
+      ? tempParts
+      : tempParts.filter((part) => {
+          return part.needed > 0;
+        });
+    tempParts =
+      projectFilter == null
+        ? tempParts
+        : tempParts.filter((part) => {
+            return part.project === projectFilter;
+          });
+    tempParts =
+      machineFilter == null
+        ? tempParts
+        : tempParts.filter((part) => {
+            return part.machine === machineFilter;
+          });
 
     if (searchTerm != "") {
       switch (searchType) {
         case "projects":
-          tempParts = tempParts.filter((part) => { return part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false; });
+          tempParts = tempParts.filter((part) => {
+            return (
+              part.project?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+              false
+            );
+          });
           break;
         case "parts":
-          tempParts = tempParts.filter((part) => { return part.name.toLowerCase().includes(searchTerm.toLowerCase()) });
+          tempParts = tempParts.filter((part) => {
+            return part.name.toLowerCase().includes(searchTerm.toLowerCase());
+          });
           break;
       }
     }
 
     return tempParts;
-  }, [parts, showComplete, searchTerm, searchType, machineFilter, projectFilter]);
+  }, [
+    parts,
+    showComplete,
+    searchTerm,
+    searchType,
+    machineFilter,
+    projectFilter,
+  ]);
 
   const columns = useMemo(() => getColumns(), []);
   const isLoadingParts = useMainStore((state) => state.isLoadingParts);
@@ -214,9 +249,9 @@ export default function PartTable({ }) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 );
               })}
