@@ -37,10 +37,14 @@ import { toast } from "sonner";
 function NumberStepper({
   label,
   value,
+  lowerBound,
+  upperBound,
   onChange,
 }: {
   label: string;
   value: number;
+  lowerBound?: number;
+  upperBound?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -51,7 +55,11 @@ function NumberStepper({
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value - 1)}
+          onClick={() => {
+            if (lowerBound === undefined || value > lowerBound) {
+              onChange(value - 1);
+            }
+          }}
           aria-label={`Decrement ${label.toLowerCase()}`}
         >
           -
@@ -60,13 +68,17 @@ function NumberStepper({
           type="number"
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="text-center"
+          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <Button
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value + 1)}
+          onClick={() => {
+            if (upperBound === undefined || value < upperBound) {
+              onChange(value + 1);
+            }
+          }}
           aria-label={`Increment ${label.toLowerCase()}`}
         >
           +
@@ -162,6 +174,7 @@ function PartForm(part: Part) {
   const projects = useMainStore((state) => state.projects);
   const submitChanges = useActionStore((state) => state.submitChanges);
   const [open, setOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [formState, dispatch] = useReducer(
     formReducer,
     part,
@@ -169,37 +182,65 @@ function PartForm(part: Part) {
   );
 
   const inputRef = useRef<HTMLInputElement>(null);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
   const uploadCADFile = useActionStore((state) => state.uploadCADFile);
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  function handleCAMFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 52428800) {
-      toast.error("File Upload Limit: 50 MB")
+    if (!file) {
       return;
     }
 
-    try {
-      const result = await uploadCADFile(part.id, file);
+    if (file.size > 52428800) {
+      toast.error("File Upload Limit: 50 MB");
+      event.target.value = "";
+      return;
+    }
 
-      if (!result.success) {
-        toast.error("Error uploading CAM file");
-      } else {
-        toast.success("Successfully uploaded CAM file!");
+    setSelectedCAMFile(file);
+    event.target.value = "";
+  }
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      setSelectedCAMFile(null);
+    }
+  }
+
+  async function handleSave() {
+    try {
+      setIsSubmitting(true);
+
+      await submitChanges(part.id, formState);
+
+      if (selectedCAMFile) {
+        const uploadResult = await uploadCADFile(part.id, selectedCAMFile);
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error ?? "Failed to upload CAM file");
+        }
       }
 
-      event.target.files = null;
-    } catch (error) {
-      console.error("Error uploading file:", error);
+      toast.success("Successfully saved changes!");
+      setSelectedCAMFile(null);
+      setOpen(false);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        toast.error(e.message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Settings className="h-5 w-5 text-zinc-500" />
@@ -264,7 +305,7 @@ function PartForm(part: Part) {
                       onClick={() =>
                         dispatch({
                           type: "SET_FIELD",
-                          field: "machine",
+                          field: "project",
                           value: project,
                         })
                       }
@@ -299,7 +340,7 @@ function PartForm(part: Part) {
           />
           <Field>
             <FieldLabel htmlFor="due">Due</FieldLabel>
-            <Popover>
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -319,13 +360,14 @@ function PartForm(part: Part) {
                       ? new Date(formState.due_date)
                       : undefined
                   }
-                  onSelect={(date) =>
+                  onSelect={(date) => {
                     dispatch({
                       type: "SET_FIELD",
                       field: "due_date",
                       value: date,
-                    })
-                  }
+                    });
+                  }}
+                  onDayClick={() => setDueDateOpen(false)}
                   defaultMonth={
                     formState.due_date
                       ? new Date(formState.due_date)
@@ -338,6 +380,7 @@ function PartForm(part: Part) {
           <NumberStepper
             label="Needed"
             value={formState.needed}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "needed", value })
             }
@@ -345,6 +388,7 @@ function PartForm(part: Part) {
           <NumberStepper
             label="Priority"
             value={formState.priority}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "priority", value })
             }
@@ -367,35 +411,60 @@ function PartForm(part: Part) {
             />
           </Field>
 
-          <Button onClick={() => inputRef.current?.click()}>
-            {part.cad_file ? "Update CAM File" : "Upload CAM File"}
-          </Button>
+          <Field>
+            <FieldLabel>CAM File</FieldLabel>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => inputRef.current?.click()}
+                disabled={isSubmitting}
+              >
+                {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
+              </Button>
+              {selectedCAMFile ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCAMFile(null)}
+                  disabled={isSubmitting}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+          </Field>
 
-          <Label className="mt-2">
-            CAM File: {part.cad_file?.split("/").pop() || "No file uploaded"}
+          <Label className="mt-2 block">
+            CAM File:{" "}
+            {selectedCAMFile?.name ||
+              part.cad_file?.split("/").pop() ||
+              "No file uploaded"}
           </Label>
 
           <input
+            ref={inputRef}
             type="file"
             className="hidden"
-            id="cad-upload"
-            onChange={handleFileChange}
-            ref={inputRef}
+            onChange={handleCAMFileSelect}
           />
         </FieldGroup>
         <DialogFooter>
           <Button
             variant="destructive"
+            disabled={isSubmitting}
             onClick={async () => {
               setOpen(false);
 
               try {
                 await useActionStore.getState().deletePart(part.id);
 
-                toast.success("Successfully deleted part!")
+                toast.success("Successfully deleted part!");
               } catch (e: unknown) {
                 if (e instanceof Error) {
-                  toast.error(e.message)
+                  toast.error(e.message);
                 }
               }
             }}
@@ -404,18 +473,8 @@ function PartForm(part: Part) {
           </Button>
           <Button
             variant="outline"
-            onClick={async () => {
-              try {
-                await submitChanges(part.id, formState);
-
-                toast.success("Sucessfully saved changes!")
-              } catch (e: unknown) {
-                if (e instanceof Error) {
-                  toast.error(e.message);
-                }
-              }
-              setOpen(false);
-            }}
+            disabled={isSubmitting}
+            onClick={handleSave}
           >
             Save
           </Button>

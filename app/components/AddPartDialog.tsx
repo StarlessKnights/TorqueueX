@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
@@ -74,17 +75,21 @@ const initialFormState: AddFormState = {
   dueDate: undefined,
   status: part_status.NEEDS_CAD,
   remaining: 1,
-  priority: 0,
+  priority: 1,
   notes: "",
 };
 
 function NumberStepper({
   label,
   value,
+  lowerBound,
+  upperBound,
   onChange,
 }: {
   label: string;
   value: number;
+  lowerBound?: number;
+  upperBound?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -95,7 +100,11 @@ function NumberStepper({
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value - 1)}
+          onClick={() => {
+            if (lowerBound === undefined || value > lowerBound) {
+              onChange(value - 1);
+            }
+          }}
           aria-label={`Decrement ${label.toLowerCase()}`}
         >
           -
@@ -104,13 +113,17 @@ function NumberStepper({
           type="number"
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="text-center"
+          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <Button
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value + 1)}
+          onClick={() => {
+            if (upperBound === undefined || value < upperBound) {
+              onChange(value + 1);
+            }
+          }}
           aria-label={`Increment ${label.toLowerCase()}`}
         >
           +
@@ -143,12 +156,51 @@ function FieldLabelInput({
 }
 
 export default function AddPartDialog() {
-  const createAndAddPart = useActionStore((state) => state.createAndAddPart);
+  const createPartWithOptionalCAM = useActionStore(
+    (state) => state.createPartWithOptionalCAM,
+  );
   const machines = useMainStore((state) => state.machines);
   const projects = useMainStore((state) => state.projects);
 
   const [open, setOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function resetForm() {
+    dispatch({ type: "RESET", payload: initialFormState });
+    setSelectedCAMFile(null);
+  }
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (isSubmitting) {
+      return;
+    }
+
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      resetForm();
+    }
+  }
+
+  function handleCAMFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 52428800) {
+      toast.error("File Upload Limit: 50 MB");
+      event.target.value = "";
+      return;
+    }
+
+    setSelectedCAMFile(file);
+    event.target.value = "";
+  }
 
   async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
@@ -157,31 +209,40 @@ export default function AddPartDialog() {
     }
 
     try {
-      await createAndAddPart({
-        name: formState.name.trim(),
-        machine: formState.machine,
-        project: formState.project,
-        material: formState.material,
-        endmill: formState.endmill,
-        creator: formState.creator.trim(),
-        due_date: formState.dueDate ?? null,
-        status: formState.status,
-        needed: formState.remaining,
-        priority: formState.priority,
-        notes: formState.notes,
-      });
+      setIsSubmitting(true);
 
-      dispatch({ type: "RESET", payload: initialFormState });
+      await createPartWithOptionalCAM(
+        {
+          name: formState.name.trim(),
+          machine: formState.machine,
+          project: formState.project,
+          material: formState.material,
+          endmill: formState.endmill,
+          creator: formState.creator.trim(),
+          due_date: formState.dueDate ?? null,
+          status: formState.status,
+          needed: formState.remaining,
+          priority: formState.priority,
+          notes: formState.notes,
+        },
+        selectedCAMFile,
+      );
+
+      resetForm();
       setOpen(false);
 
-      toast.success("Sucessfully added part!");
-    } catch {
-      toast.error("Failed to add part");
+      toast.success("Successfully added part!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add part",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
         <Button
           size="icon"
@@ -310,7 +371,7 @@ export default function AddPartDialog() {
           />
           <Field>
             <FieldLabel htmlFor="due">Due</FieldLabel>
-            <Popover>
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -324,13 +385,14 @@ export default function AddPartDialog() {
                 <Calendar
                   mode="single"
                   selected={formState.dueDate}
-                  onSelect={(date) =>
+                  onSelect={(date) => {
                     dispatch({
                       type: "SET_FIELD",
                       field: "dueDate",
                       value: date,
-                    })
-                  }
+                    });
+                  }}
+                  onDayClick={() => setDueDateOpen(false)}
                   defaultMonth={formState.dueDate}
                 />
               </PopoverContent>
@@ -339,6 +401,7 @@ export default function AddPartDialog() {
           <NumberStepper
             label="Remaining"
             value={formState.remaining}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "remaining", value })
             }
@@ -346,6 +409,7 @@ export default function AddPartDialog() {
           <NumberStepper
             label="Priority"
             value={formState.priority}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "priority", value })
             }
@@ -367,10 +431,49 @@ export default function AddPartDialog() {
               className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
           </Field>
+
+          <Field>
+            <FieldLabel>CAM File</FieldLabel>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => inputRef.current?.click()}
+                disabled={isSubmitting}
+              >
+                {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
+              </Button>
+              {selectedCAMFile ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCAMFile(null)}
+                  disabled={isSubmitting}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+            <Label className="mt-2 block">
+              CAM File: {selectedCAMFile?.name || "No file selected"}
+            </Label>
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              onChange={handleCAMFileSelect}
+            />
+          </Field>
         </FieldGroup>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleAddPart}>
+          <Button
+            variant="outline"
+            onClick={handleAddPart}
+            disabled={isSubmitting}
+          >
             Add Part
           </Button>
         </DialogFooter>
