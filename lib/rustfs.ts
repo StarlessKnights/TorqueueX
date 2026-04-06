@@ -6,7 +6,7 @@ const rustfs_client = new S3Client({
     accessKeyId: process.env.RUSTFS_ACCESS_KEY || "",
     secretAccessKey: process.env.RUSTFS_SECRET_KEY || "",
   },
-  endpoint: "http://localhost:9000",
+  endpoint: process.env.RUSTFS_ENDPOINT || "http://localhost:9000",
   forcePathStyle: true,
 });
 
