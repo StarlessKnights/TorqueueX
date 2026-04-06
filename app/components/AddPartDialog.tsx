@@ -29,7 +29,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
-import { part_status } from "@/lib/generated/prisma/client";
+import { part_status } from "@/lib/generated/prisma/enums";
 import { toast } from "sonner";
 
 type AddFormState = {
