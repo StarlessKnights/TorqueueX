@@ -152,7 +152,7 @@ export default function AddPartDialog() {
 
   async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
-      toast.warning("Name and Creator fields are required.")
+      toast.warning("Name and Creator fields are required.");
       return;
     }
 
@@ -174,9 +174,9 @@ export default function AddPartDialog() {
       dispatch({ type: "RESET", payload: initialFormState });
       setOpen(false);
 
-      toast.success("Sucessfully added part!")
+      toast.success("Sucessfully added part!");
     } catch {
-      toast.error("Failed to add part")
+      toast.error("Failed to add part");
     }
   }
 
