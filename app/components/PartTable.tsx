@@ -165,11 +165,15 @@ export default function PartTable({ }) {
   const showComplete = useMainStore((state) => state.showComplete);
   const searchTerm = useMainStore((state) => state.searchTerm);
   const searchType = useMainStore((state) => state.searchType);
+  const projectFilter = useMainStore((state) => state.projectFilter);
+  const machineFilter = useMainStore((state) => state.machineFilter);
 
   const filteredParts = useMemo(() => {
     let tempParts: Part[] = parts;
 
     tempParts = showComplete ? tempParts : tempParts.filter((part) => { return part.needed > 0; });
+    tempParts = projectFilter == null ? tempParts : tempParts.filter((part) => { return part.project === projectFilter; });
+    tempParts = machineFilter == null ? tempParts : tempParts.filter((part) => { return part.machine === machineFilter; });
 
     if (searchTerm != "") {
       switch (searchType) {
@@ -183,7 +187,7 @@ export default function PartTable({ }) {
     }
 
     return tempParts;
-  }, [parts, showComplete, searchTerm, searchType]);
+  }, [parts, showComplete, searchTerm, searchType, machineFilter, projectFilter]);
 
   const columns = useMemo(() => getColumns(), []);
   const isLoadingParts = useMainStore((state) => state.isLoadingParts);

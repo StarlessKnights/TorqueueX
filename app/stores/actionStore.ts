@@ -8,7 +8,10 @@ import { part_status } from "@/lib/generated/prisma/enums";
 type ActionStore = {
   fetchData: () => Promise<void>;
   completePart: (partId: string) => Promise<void>;
-  submitChanges: (partId: string, updatedData: Partial<FormState>) => Promise<void>;
+  submitChanges: (
+    partId: string,
+    updatedData: Partial<FormState>,
+  ) => Promise<void>;
   addPart: (newPart: Part) => void;
   createAndAddPart: (formData: Partial<parts>) => Promise<void>;
   deletePart: (partId: string) => Promise<void>;
@@ -23,11 +26,12 @@ export const useActionStore = create<ActionStore>(() => ({
     try {
       useMainStore.setState({ isLoadingParts: true });
 
-      const [partsResponse, machinesResponse, projectsResponse] = await Promise.all([
-        fetch("/api/parts"),
-        fetch("/api/machines"),
-        fetch("/api/projects")
-      ]);
+      const [partsResponse, machinesResponse, projectsResponse] =
+        await Promise.all([
+          fetch("/api/parts"),
+          fetch("/api/machines"),
+          fetch("/api/projects"),
+        ]);
 
       if (!partsResponse.ok) {
         throw new Error("Failed to fetch parts");
@@ -45,7 +49,9 @@ export const useActionStore = create<ActionStore>(() => ({
       const machines = (await machinesResponse.json()).map(
         (machine: { name: string }) => machine.name,
       );
-      const projects = (await projectsResponse.json()).map((project: { name: string }) => project.name);
+      const projects = (await projectsResponse.json()).map(
+        (project: { name: string }) => project.name,
+      );
 
       useMainStore.getState().setParts(
         parts.sort((a, b) => {
@@ -53,7 +59,7 @@ export const useActionStore = create<ActionStore>(() => ({
           if (a.needed <= 0 && b.needed > 0) return 1;
 
           return a.priority - b.priority;
-        })
+        }),
       );
 
       useMainStore.getState().setMachines(machines);
@@ -68,7 +74,7 @@ export const useActionStore = create<ActionStore>(() => ({
     const part = useMainStore.getState().parts.find((p) => p.id === partId);
 
     if (!part) {
-      throw new Error("No part found")
+      throw new Error("No part found");
     }
 
     await fetch("/api/parts/complete", {
@@ -253,5 +259,5 @@ export const useActionStore = create<ActionStore>(() => ({
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
-  }
+  },
 }));

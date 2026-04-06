@@ -20,10 +20,16 @@ import { useMainStore } from "../stores/mainStore";
 export default function Header() {
   const [selectedSearchCategory, setSelectedSearchCategory] = useState("parts");
 
+  const machines = useMainStore((state) => state.machines);
+  const projects = useMainStore((state) => state.projects);
+
   return (
     <header className="border-b bg-black text-white p-4">
       <div className="grid h-12 w-full grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-4 justify-self-start">
+          <ProjectFilter projects={projects} onSelect={(project) => { useMainStore.setState({ projectFilter: project }); }} />
+          <MachineFilter machines={machines} onSelect={(machine) => { useMainStore.setState({ machineFilter: machine }); }} />
+
           <ShowCompleteFilter
             onSelect={(showComplete) => {
               useMainStore.setState({ showComplete: showComplete });
@@ -73,7 +79,6 @@ export default function Header() {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProjectFilter({
   projects,
   onSelect,
@@ -117,7 +122,6 @@ function ProjectFilter({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MachineFilter({
   machines,
   onSelect,

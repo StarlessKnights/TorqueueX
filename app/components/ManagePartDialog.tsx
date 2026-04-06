@@ -178,6 +178,11 @@ function PartForm(part: Part) {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 52428800) {
+      toast.error("File Upload Limit: 50 MB")
+      return;
+    }
+
     try {
       const result = await uploadCADFile(part.id, file);
 
