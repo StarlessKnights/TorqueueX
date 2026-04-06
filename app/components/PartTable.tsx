@@ -214,6 +214,13 @@ export default function PartTable({}) {
       }
     }
 
+    tempParts = tempParts.sort((a, b) => {
+      if (a.needed > 0 && b.needed <= 0) return -1;
+      if (a.needed <= 0 && b.needed > 0) return 1;
+
+      return a.priority - b.priority;
+    });
+
     return tempParts;
   }, [
     parts,

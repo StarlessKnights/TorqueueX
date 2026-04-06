@@ -75,17 +75,21 @@ const initialFormState: AddFormState = {
   dueDate: undefined,
   status: part_status.NEEDS_CAD,
   remaining: 1,
-  priority: 0,
+  priority: 1,
   notes: "",
 };
 
 function NumberStepper({
   label,
   value,
+  lowerBound,
+  upperBound,
   onChange,
 }: {
   label: string;
   value: number;
+  lowerBound?: number;
+  upperBound?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -96,7 +100,11 @@ function NumberStepper({
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value - 1)}
+          onClick={() => {
+            if (lowerBound === undefined || value > lowerBound) {
+              onChange(value - 1);
+            }
+          }}
           aria-label={`Decrement ${label.toLowerCase()}`}
         >
           -
@@ -105,13 +113,17 @@ function NumberStepper({
           type="number"
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="text-center"
+          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <Button
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value + 1)}
+          onClick={() => {
+            if (upperBound === undefined || value < upperBound) {
+              onChange(value + 1);
+            }
+          }}
           aria-label={`Increment ${label.toLowerCase()}`}
         >
           +
@@ -387,6 +399,7 @@ export default function AddPartDialog() {
           <NumberStepper
             label="Remaining"
             value={formState.remaining}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "remaining", value })
             }
@@ -394,6 +407,7 @@ export default function AddPartDialog() {
           <NumberStepper
             label="Priority"
             value={formState.priority}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "priority", value })
             }

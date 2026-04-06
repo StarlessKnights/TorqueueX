@@ -115,6 +115,10 @@ export const useActionStore = create<ActionStore>(() => ({
       });
   },
   submitChanges: async (partId: string, updatedData: Partial<FormState>) => {
+    if (updatedData.priority !== undefined && updatedData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
     await fetch("/api/parts", {
       method: "PUT",
       headers: {
@@ -143,6 +147,10 @@ export const useActionStore = create<ActionStore>(() => ({
     }));
   },
   createAndAddPart: async (formData: Partial<parts>) => {
+    if (formData.priority !== undefined && formData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
     try {
       const maxPartNumber = useMainStore
         .getState()
@@ -161,7 +169,7 @@ export const useActionStore = create<ActionStore>(() => ({
         due_date: formData.due_date || null,
         status: formData.status || part_status.NEEDS_CAD,
         needed: formData.needed || 1,
-        priority: formData.priority || 0,
+        priority: formData.priority || 1,
         notes: formData.notes || "",
         create_date: new Date(),
         part_number: maxPartNumber + 1,
@@ -193,6 +201,10 @@ export const useActionStore = create<ActionStore>(() => ({
     formData: Partial<parts>,
     camFile?: File | null,
   ) => {
+    if (formData.priority !== undefined && formData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
     const createdPart = await useActionStore
       .getState()
       .createAndAddPart(formData);

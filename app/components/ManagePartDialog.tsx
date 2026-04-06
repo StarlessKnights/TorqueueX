@@ -37,10 +37,14 @@ import { toast } from "sonner";
 function NumberStepper({
   label,
   value,
+  lowerBound,
+  upperBound,
   onChange,
 }: {
   label: string;
   value: number;
+  lowerBound?: number;
+  upperBound?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -51,7 +55,11 @@ function NumberStepper({
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value - 1)}
+          onClick={() => {
+            if (lowerBound === undefined || value > lowerBound) {
+              onChange(value - 1);
+            }
+          }}
           aria-label={`Decrement ${label.toLowerCase()}`}
         >
           -
@@ -60,13 +68,17 @@ function NumberStepper({
           type="number"
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="text-center"
+          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <Button
           type="button"
           variant="outline"
           size="icon-xs"
-          onClick={() => onChange(value + 1)}
+          onClick={() => {
+            if (upperBound === undefined || value < upperBound) {
+              onChange(value + 1);
+            }
+          }}
           aria-label={`Increment ${label.toLowerCase()}`}
         >
           +
@@ -366,6 +378,7 @@ function PartForm(part: Part) {
           <NumberStepper
             label="Needed"
             value={formState.needed}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "needed", value })
             }
@@ -373,6 +386,7 @@ function PartForm(part: Part) {
           <NumberStepper
             label="Priority"
             value={formState.priority}
+            lowerBound={1}
             onChange={(value) =>
               dispatch({ type: "SET_FIELD", field: "priority", value })
             }
