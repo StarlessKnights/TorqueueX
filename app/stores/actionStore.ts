@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useMainStore } from "./mainStore";
 import { FormState } from "../components/ManagePartDialog";
 import { Part } from "../interfaces/Part";
-import { parts } from "@/lib/generated/prisma/client";
+import type { parts } from "@/lib/generated/prisma/client";
 import { part_status } from "@/lib/generated/prisma/enums";
 
 type ActionStore = {
