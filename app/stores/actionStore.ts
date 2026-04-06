@@ -3,7 +3,7 @@ import { useMainStore } from "./mainStore";
 import { FormState } from "../components/ManagePartDialog";
 import { Part } from "../interfaces/Part";
 import { parts } from "@/lib/generated/prisma/client";
-import { part_status } from "@/lib/generated/prisma/enums";
+import { part_status } from "@/lib/generated/prisma/client";
 
 type ActionStore = {
   fetchData: () => Promise<void>;
