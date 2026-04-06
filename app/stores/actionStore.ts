@@ -13,12 +13,16 @@ type ActionStore = {
     updatedData: Partial<FormState>,
   ) => Promise<void>;
   addPart: (newPart: Part) => void;
-  createAndAddPart: (formData: Partial<parts>) => Promise<void>;
-  deletePart: (partId: string) => Promise<void>;
+  createAndAddPart: (formData: Partial<parts>) => Promise<parts>;
+  createPartWithOptionalCAM: (
+    formData: Partial<parts>,
+    camFile?: File | null,
+  ) => Promise<void>;
+  deletePart: (partId: string, cadFilePath?: string | null) => Promise<void>;
   uploadCADFile: (
     partId: string,
     file: File,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; cadFilePath?: string }>;
 };
 
 export const useActionStore = create<ActionStore>(() => ({
@@ -111,6 +115,10 @@ export const useActionStore = create<ActionStore>(() => ({
       });
   },
   submitChanges: async (partId: string, updatedData: Partial<FormState>) => {
+    if (updatedData.priority !== undefined && updatedData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
     await fetch("/api/parts", {
       method: "PUT",
       headers: {
@@ -139,6 +147,10 @@ export const useActionStore = create<ActionStore>(() => ({
     }));
   },
   createAndAddPart: async (formData: Partial<parts>) => {
+    if (formData.priority !== undefined && formData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
     try {
       const maxPartNumber = useMainStore
         .getState()
@@ -157,7 +169,7 @@ export const useActionStore = create<ActionStore>(() => ({
         due_date: formData.due_date || null,
         status: formData.status || part_status.NEEDS_CAD,
         needed: formData.needed || 1,
-        priority: formData.priority || 0,
+        priority: formData.priority || 1,
         notes: formData.notes || "",
         create_date: new Date(),
         part_number: maxPartNumber + 1,
@@ -176,19 +188,55 @@ export const useActionStore = create<ActionStore>(() => ({
         throw new Error("Failed to create part");
       }
 
-      useActionStore.getState().addPart(newPart);
+      const createdPart = (await response.json()) as parts;
+      useActionStore.getState().addPart(createdPart);
+
+      return createdPart;
     } catch (error) {
       console.error("Error creating part:", error);
       throw error;
     }
   },
-  deletePart: async (partId: string) => {
+  createPartWithOptionalCAM: async (
+    formData: Partial<parts>,
+    camFile?: File | null,
+  ) => {
+    if (formData.priority !== undefined && formData.priority < 1) {
+      throw new Error("Priority must be at least 1");
+    }
+
+    const createdPart = await useActionStore
+      .getState()
+      .createAndAddPart(formData);
+
+    if (!camFile) {
+      return;
+    }
+
+    const uploadResult = await useActionStore
+      .getState()
+      .uploadCADFile(createdPart.id, camFile);
+
+    if (!uploadResult.success) {
+      await useActionStore
+        .getState()
+        .deletePart(createdPart.id, uploadResult.cadFilePath ?? null);
+
+      throw new Error(uploadResult.error ?? "Failed to upload CAM file");
+    }
+  },
+  deletePart: async (partId: string, cadFilePath?: string | null) => {
+    const storedPart = useMainStore
+      .getState()
+      .parts.find((p) => p.id === partId);
+    const cadfile = cadFilePath ?? storedPart?.cad_file ?? null;
+
     await fetch("/api/parts", {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id: partId }),
+      body: JSON.stringify({ id: partId, cadfile }),
     })
       .then((response) => {
         if (!response.ok) {
@@ -206,6 +254,8 @@ export const useActionStore = create<ActionStore>(() => ({
       });
   },
   uploadCADFile: async (partId: string, file: File) => {
+    let cadFilePath: string | undefined;
+
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -219,11 +269,12 @@ export const useActionStore = create<ActionStore>(() => ({
       if (!uploadResponse.ok) {
         return {
           success: false,
-          error: "Failed to upload CAD file",
+          error: "Failed to upload CAM file",
         };
       }
 
       const uploadData = await uploadResponse.json();
+      cadFilePath = uploadData.cadFilePath as string;
 
       const apiResponse = await fetch("/api/parts", {
         method: "PUT",
@@ -232,14 +283,23 @@ export const useActionStore = create<ActionStore>(() => ({
         },
         body: JSON.stringify({
           id: partId,
-          cad_file: uploadData.cadFilePath,
+          cad_file: cadFilePath,
         }),
       });
 
       if (!apiResponse.ok) {
+        await fetch("/api/parts/upload-cam", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cadFilePath }),
+        });
+
         return {
           success: false,
-          error: "Failed to update part with CAD file",
+          error: "Failed to update part with CAM file",
+          cadFilePath: cadFilePath,
         };
       }
 
@@ -252,11 +312,29 @@ export const useActionStore = create<ActionStore>(() => ({
         ),
       }));
 
-      return { success: true };
+      return { success: true, cadFilePath: cadFilePath };
     } catch (error) {
+      if (cadFilePath) {
+        try {
+          await fetch("/api/parts/upload-cam", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ cadFilePath }),
+          });
+        } catch {
+          console.error(
+            "Failed to clean up CAM file after error:",
+            cadFilePath,
+          );
+        }
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
+        cadFilePath: cadFilePath,
       };
     }
   },

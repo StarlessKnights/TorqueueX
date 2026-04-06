@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import rustfs_client from "@/lib/rustfs";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
 export async function POST(request: Request) {
   try {
@@ -9,10 +9,7 @@ export async function POST(request: Request) {
     const partId = formData.get("partId") as string;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     if (!partId) {
@@ -45,10 +42,54 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ cadFilePath }, { status: 200 });
   } catch (error) {
-    console.error("Failed to upload CAD file:", error);
+    console.error("Failed to upload CAM file:", error);
 
     return NextResponse.json(
-      { error: "Failed to upload CAD file: " + (error instanceof Error ? error.message : String(error)) },
+      {
+        error:
+          "Failed to upload CAM file: " +
+          (error instanceof Error ? error.message : String(error)),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { cadFilePath } = (await request.json()) as {
+      cadFilePath?: string;
+    };
+
+    if (!cadFilePath) {
+      return NextResponse.json(
+        { error: "No CAM file path provided" },
+        { status: 400 },
+      );
+    }
+
+    const s3Response = await rustfs_client.send(
+      new DeleteObjectCommand({
+        Bucket: "parts",
+        Key: cadFilePath,
+      }),
+    );
+
+    const statusCode = s3Response.$metadata.httpStatusCode;
+
+    if (statusCode !== 200 && statusCode !== 204) {
+      return NextResponse.json(
+        { error: "Failed to delete CAM file" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ message: "CAM file deleted" }, { status: 200 });
+  } catch (error) {
+    console.error("Failed to delete CAM file:", error);
+
+    return NextResponse.json(
+      { error: "Failed to delete CAM file" },
       { status: 500 },
     );
   }
