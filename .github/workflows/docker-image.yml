@@ -23,7 +23,7 @@ jobs:
     
     - name: Build the Docker image
       run: |
-        IMAGE_TAG=stardustknight/torqueue:$(date +%s)
+        IMAGE_TAG=stardustknight/torqueue:${GITHUB_SHA::7}
         docker build . --file Dockerfile --tag $IMAGE_TAG
 
     - name: Push the Docker image
