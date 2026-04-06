@@ -12,6 +12,9 @@ type MainStore = {
   searchType: string;
   showComplete: boolean;
 
+  projectFilter: string | null;
+  machineFilter: string | null;
+
   setIsLoadingParts: (isLoading: boolean) => void;
   setParts: (parts: Part[]) => void;
   setMachines: (machines: string[]) => void;
@@ -28,6 +31,9 @@ export const useMainStore = create<MainStore>((set) => ({
   searchTerm: "",
   searchType: "",
   showComplete: false,
+
+  projectFilter: null,
+  machineFilter: null,
 
   setIsLoadingParts: (isLoading) => set({ isLoadingParts: isLoading }),
   setParts: (parts: Part[]) => set({ parts }),
