@@ -57,7 +57,7 @@ export default function Header() {
             href="/"
             className={`${marketDeco.className} text-3xl font-semibold`}
           >
-            TORQUEUE
+            TORQUEUE V2
           </Link>
         </div>
         <div className="flex items-center gap-4 justify-self-end">
