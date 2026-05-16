@@ -130,6 +130,8 @@ const getColumns = (): ColumnDef<Part>[] => [
         <Button
           variant="outline"
           size="sm"
+          aria-label="Download CAM file"
+          title="Download CAM file"
           onClick={async () => {
             try {
               await handleFileDownload(row.original);
@@ -146,13 +148,11 @@ const getColumns = (): ColumnDef<Part>[] => [
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            toast.error("No file to download");
-          }}
+          disabled
+          aria-label="No CAM file available"
+          title="No CAM file available"
         >
-          <div className="relative inline-flex items-center justify-center">
-            <FileXCorner className="h-5 w-5 text-red-500" />
-          </div>
+          <FileXCorner className="h-5 w-5 text-zinc-400" />
         </Button>
       );
     },
