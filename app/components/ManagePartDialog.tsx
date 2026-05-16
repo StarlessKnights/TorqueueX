@@ -27,12 +27,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Part } from "../interfaces/Part";
 import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { GcodeViewer } from "@/app/components/GcodeViewer";
 
 function NumberStepper({
   label,
@@ -246,211 +248,230 @@ function PartForm(part: Part) {
           <Settings className="h-5 w-5 text-zinc-500" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg h-[85vh] max-h-180 flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-[85vh] max-h-180 flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit {part.name}</DialogTitle>
           <DialogDescription>
-            Here you can edit the details of this part.
+            Edit part details and preview CAM file
           </DialogDescription>
         </DialogHeader>
-        <FieldGroup className="overflow-y-auto pr-1">
-          <FieldLabelInput
-            label="Name"
-            value={formState.name}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "name", value })
-            }
-          />
-          <Field>
-            <FieldLabel htmlFor="machine">Machine</FieldLabel>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  {formState.machine}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  {machines.map((machine) => (
-                    <DropdownMenuItem
-                      key={machine}
-                      onClick={() =>
+        <Tabs
+          defaultValue="details"
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          <TabsList className="w-full" variant="line">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="gcode">CAM Preview</TabsTrigger>
+          </TabsList>
+
+          <TabsContent
+            value="details"
+            className="flex-1 overflow-hidden flex flex-col"
+          >
+            <FieldGroup className="overflow-y-auto pr-1">
+              <FieldLabelInput
+                label="Name"
+                value={formState.name}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "name", value })
+                }
+              />
+              <Field>
+                <FieldLabel htmlFor="machine">Machine</FieldLabel>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">
+                      {formState.machine}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuGroup>
+                      {machines.map((machine) => (
+                        <DropdownMenuItem
+                          key={machine}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "machine",
+                              value: machine,
+                            })
+                          }
+                        >
+                          {machine}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="project">Project</FieldLabel>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">
+                      {formState.project}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuGroup>
+                      {projects.map((project) => (
+                        <DropdownMenuItem
+                          key={project}
+                          onClick={() =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "project",
+                              value: project,
+                            })
+                          }
+                        >
+                          {project}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Field>
+              <FieldLabelInput
+                label="Material"
+                value={formState.material || ""}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "material", value })
+                }
+              />
+              <FieldLabelInput
+                label="Endmill"
+                value={formState.endmill || ""}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "endmill", value })
+                }
+              />
+              <FieldLabelInput
+                label="Creator"
+                value={formState.creator}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "creator", value })
+                }
+              />
+              <Field>
+                <FieldLabel htmlFor="due">Due</FieldLabel>
+                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-left"
+                    >
+                      {formState.due_date
+                        ? formState.due_date.toLocaleDateString()
+                        : "Select due date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        formState.due_date
+                          ? new Date(formState.due_date)
+                          : undefined
+                      }
+                      onSelect={(date) => {
                         dispatch({
                           type: "SET_FIELD",
-                          field: "machine",
-                          value: machine,
-                        })
+                          field: "due_date",
+                          value: date,
+                        });
+                      }}
+                      onDayClick={() => setDueDateOpen(false)}
+                      defaultMonth={
+                        formState.due_date
+                          ? new Date(formState.due_date)
+                          : undefined
                       }
-                    >
-                      {machine}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="project">Project</FieldLabel>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  {formState.project}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuGroup>
-                  {projects.map((project) => (
-                    <DropdownMenuItem
-                      key={project}
-                      onClick={() =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "project",
-                          value: project,
-                        })
-                      }
-                    >
-                      {project}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Field>
-          <FieldLabelInput
-            label="Material"
-            value={formState.material || ""}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "material", value })
-            }
-          />
-          <FieldLabelInput
-            label="Endmill"
-            value={formState.endmill || ""}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "endmill", value })
-            }
-          />
-          <FieldLabelInput
-            label="Creator"
-            value={formState.creator}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "creator", value })
-            }
-          />
-          <Field>
-            <FieldLabel htmlFor="due">Due</FieldLabel>
-            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-left"
-                >
-                  {formState.due_date
-                    ? formState.due_date.toLocaleDateString()
-                    : "Select due date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={
-                    formState.due_date
-                      ? new Date(formState.due_date)
-                      : undefined
-                  }
-                  onSelect={(date) => {
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Field>
+              <NumberStepper
+                label="Needed"
+                value={formState.needed}
+                lowerBound={1}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "needed", value })
+                }
+              />
+              <NumberStepper
+                label="Priority"
+                value={formState.priority}
+                lowerBound={1}
+                onChange={(value) =>
+                  dispatch({ type: "SET_FIELD", field: "priority", value })
+                }
+              />
+              <Field>
+                <FieldLabel htmlFor="notes">Notes</FieldLabel>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  value={formState.notes}
+                  onChange={(event) =>
                     dispatch({
                       type: "SET_FIELD",
-                      field: "due_date",
-                      value: date,
-                    });
-                  }}
-                  onDayClick={() => setDueDateOpen(false)}
-                  defaultMonth={
-                    formState.due_date
-                      ? new Date(formState.due_date)
-                      : undefined
+                      field: "notes",
+                      value: event.target.value,
+                    })
                   }
+                  rows={6}
+                  className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
                 />
-              </PopoverContent>
-            </Popover>
-          </Field>
-          <NumberStepper
-            label="Needed"
-            value={formState.needed}
-            lowerBound={1}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "needed", value })
-            }
-          />
-          <NumberStepper
-            label="Priority"
-            value={formState.priority}
-            lowerBound={1}
-            onChange={(value) =>
-              dispatch({ type: "SET_FIELD", field: "priority", value })
-            }
-          />
-          <Field>
-            <FieldLabel htmlFor="notes">Notes</FieldLabel>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formState.notes}
-              onChange={(event) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "notes",
-                  value: event.target.value,
-                })
-              }
-              rows={6}
-              className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-            />
-          </Field>
+              </Field>
 
-          <Field>
-            <FieldLabel>CAM File</FieldLabel>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => inputRef.current?.click()}
-                disabled={isSubmitting}
-              >
-                {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
-              </Button>
-              {selectedCAMFile ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedCAMFile(null)}
-                  disabled={isSubmitting}
-                >
-                  Remove
-                </Button>
-              ) : null}
-            </div>
-          </Field>
+              <Field>
+                <FieldLabel>CAM File</FieldLabel>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => inputRef.current?.click()}
+                    disabled={isSubmitting}
+                  >
+                    {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
+                  </Button>
+                  {selectedCAMFile ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCAMFile(null)}
+                      disabled={isSubmitting}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              </Field>
 
-          <Label className="mt-2 block">
-            CAM File:{" "}
-            {selectedCAMFile?.name ||
-              part.cad_file?.split("/").pop() ||
-              "No file uploaded"}
-          </Label>
+              <Label className="mt-2 block">
+                CAM File:{" "}
+                {selectedCAMFile?.name ||
+                  part.cad_file?.split("/").pop() ||
+                  "No file uploaded"}
+              </Label>
 
-          <input
-            ref={inputRef}
-            type="file"
-            className="hidden"
-            onChange={handleCAMFileSelect}
-          />
-        </FieldGroup>
+              <input
+                ref={inputRef}
+                type="file"
+                className="hidden"
+                onChange={handleCAMFileSelect}
+              />
+            </FieldGroup>
+          </TabsContent>
+
+          <TabsContent value="gcode" className="flex-1 overflow-hidden">
+            <GcodeViewer cadFilePath={part.cad_file} partId={part.id} />
+          </TabsContent>
+        </Tabs>
         <DialogFooter>
           <Button
             variant="destructive"

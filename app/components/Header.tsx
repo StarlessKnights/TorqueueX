@@ -27,8 +27,18 @@ export default function Header() {
     <header className="border-b bg-black text-white p-4">
       <div className="grid h-12 w-full grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-4 justify-self-start">
-          <ProjectFilter projects={projects} onSelect={(project) => { useMainStore.setState({ projectFilter: project }); }} />
-          <MachineFilter machines={machines} onSelect={(machine) => { useMainStore.setState({ machineFilter: machine }); }} />
+          <ProjectFilter
+            projects={projects}
+            onSelect={(project) => {
+              useMainStore.setState({ projectFilter: project });
+            }}
+          />
+          <MachineFilter
+            machines={machines}
+            onSelect={(machine) => {
+              useMainStore.setState({ machineFilter: machine });
+            }}
+          />
 
           <ShowCompleteFilter
             onSelect={(showComplete) => {
@@ -37,12 +47,17 @@ export default function Header() {
           />
         </div>
         <div className="flex items-center justify-center">
-          <Image height="48" width="48" src="/torqueLogo.png" alt="Torqueue Logo" />
+          <Image
+            height="48"
+            width="48"
+            src="/torqueLogo.png"
+            alt="Torqueue Logo"
+          />
           <Link
             href="/"
             className={`${marketDeco.className} text-3xl font-semibold`}
           >
-            TORQUEUE
+            TORQUEUE V2
           </Link>
         </div>
         <div className="flex items-center gap-4 justify-self-end">
@@ -67,9 +82,12 @@ export default function Header() {
             </TabsList>
           </Tabs>
           <Input
-            placeholder="Search..."
+            placeholder={`Search ${selectedSearchCategory === "parts" ? "parts..." : "projects..."}`}
             onChange={(event) => {
-              useMainStore.setState({ searchTerm: event.target.value, searchType: selectedSearchCategory });
+              useMainStore.setState({
+                searchTerm: event.target.value,
+                searchType: selectedSearchCategory,
+              });
             }}
           />
         </div>
