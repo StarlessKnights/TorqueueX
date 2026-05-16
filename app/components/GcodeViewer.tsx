@@ -547,7 +547,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   if (!cadFilePath) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        No G-code file uploaded
+        No CAM file uploaded
       </div>
     );
   }
@@ -564,7 +564,9 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
             </p>
             <button
               type="button"
-              onClick={() => { skipAnimationRef.current = true; }}
+              onClick={() => {
+                skipAnimationRef.current = true;
+              }}
               className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 underline underline-offset-2 mt-3 transition-colors"
             >
               Skip animation
