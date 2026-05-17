@@ -553,50 +553,51 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   }
 
   return (
-    <div className="relative w-full h-full">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <p className="text-sm text-muted-foreground">Loading CAM file...</p>
-            <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
-              This may take a few seconds for large files
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                skipAnimationRef.current = true;
-              }}
-              className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 underline underline-offset-2 mt-3 transition-colors"
-            >
-              Skip animation
-            </button>
+    <div className="flex flex-col h-full">
+      <div className="relative flex-1 min-h-0">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading CAM file...</p>
+              <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
+                This may take a few seconds for large files
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  skipAnimationRef.current = true;
+                }}
+                className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 underline underline-offset-2 mt-3 transition-colors"
+              >
+                Skip animation
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 border border-destructive rounded-md p-4">
-          <div className="text-center">
-            <p className="text-sm font-medium text-destructive">
-              Failed to load G-code
-            </p>
-            <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
-              {error}
-            </p>
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 border border-destructive rounded-md p-4">
+            <div className="text-center">
+              <p className="text-sm font-medium text-destructive">
+                Failed to load G-code
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
+                {error}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full border border-border rounded-md bg-slate-900"
-        style={{ minHeight: "400px", display: "block" }}
-      />
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full border border-border rounded-md bg-slate-900"
+          style={{ minHeight: "400px", display: "block" }}
+        />
+      </div>
 
-      <div className="absolute left-4 bottom-4 bg-yellow-900/30 border border-yellow-700 text-yellow-100 text-xs rounded-md px-2 py-1">
-        CAM preview may be inaccurate — always verify toolpaths before
-        machining!
+      <div className="bg-yellow-900/30 border-t border-yellow-700 text-yellow-100 text-xs text-center px-2 py-1.5 shrink-0">
+        CAM preview may be inaccurate — always verify toolpaths before machining!
       </div>
     </div>
   );
