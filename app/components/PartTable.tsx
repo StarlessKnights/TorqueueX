@@ -289,7 +289,7 @@ export default function PartTable({}) {
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                No parts left to machine!
               </TableCell>
             </TableRow>
           )}
