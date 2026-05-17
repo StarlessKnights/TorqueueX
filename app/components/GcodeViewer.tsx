@@ -597,7 +597,6 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           style={{ minHeight: "400px", display: "block" }}
         />
 
-        {/* Floating warning badge */}
         <div className="absolute bottom-4 left-4 z-40 group">
           <button
             className="flex items-center gap-2 bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700 rounded-full px-3 py-2 transition-all duration-200"
@@ -609,7 +608,6 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
             </span>
           </button>
 
-          {/* Tooltip on hover */}
           <div className="absolute bottom-full left-0 mb-2 bg-amber-950/95 border border-amber-700 rounded-md p-3 w-max max-w-xs shadow-lg backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
             <p className="text-xs font-medium text-amber-100">
               Preview for reference only
