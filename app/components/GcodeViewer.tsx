@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 const gcodeFetchCache = new Map<string, Promise<string>>();
 
@@ -559,7 +559,9 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin" />
-              <p className="text-sm text-muted-foreground">Loading CAM file...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading CAM file...
+              </p>
               <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
                 This may take a few seconds for large files
               </p>
@@ -594,10 +596,27 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           className="w-full h-full border border-border rounded-md bg-slate-900"
           style={{ minHeight: "400px", display: "block" }}
         />
-      </div>
 
-      <div className="bg-yellow-900/30 border-t border-yellow-700 text-yellow-100 text-xs text-center px-2 py-1.5 shrink-0">
-        CAM preview may be inaccurate — always verify toolpaths before machining!
+        <div className="absolute bottom-4 left-4 z-40 group">
+          <button
+            className="flex items-center gap-2 bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700 rounded-full px-3 py-2 transition-all duration-200"
+            title="CAM preview warning"
+          >
+            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-xs font-medium text-amber-100 hidden group-hover:inline whitespace-nowrap">
+              Preview only
+            </span>
+          </button>
+
+          <div className="absolute bottom-full left-0 mb-2 bg-amber-950/95 border border-amber-700 rounded-md p-3 w-max max-w-xs shadow-lg backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+            <p className="text-xs font-medium text-amber-100">
+              Preview for reference only
+            </p>
+            <p className="text-xs text-amber-100/70 mt-1">
+              Always verify the toolpath in your CAM software before machining!
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
