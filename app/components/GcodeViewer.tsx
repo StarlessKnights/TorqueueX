@@ -28,6 +28,15 @@ interface ArcCenter {
   endPoint: Point;
 }
 
+function pointsToPathData(points: Point[]): string {
+  if (points.length === 0) return "";
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    path += ` L ${points[i].x} ${points[i].y}`;
+  }
+  return path;
+}
+
 function interpolateArc(
   startX: number,
   startY: number,
@@ -245,20 +254,20 @@ function parseGcode(gcodeText: string): {
 }
 
 export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const skipAnimationRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!cadFilePath || !canvasRef.current) {
+    if (!cadFilePath || !containerRef.current) {
       return;
     }
 
-    const canvas = canvasRef.current;
+    const container = containerRef.current;
 
     try {
-      const prevCleanup = (canvas as any).__gcodeCleanup;
+      const prevCleanup = (container as any).__gcodeCleanup;
       if (typeof prevCleanup === "function") prevCleanup();
     } catch (e) {}
 
@@ -315,23 +324,13 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           maxY = Math.max(maxY, center.y);
         }
 
-        const parent = canvas.parentElement;
+        const parent = container.parentElement;
         if (!parent) {
-          throw new Error("Canvas parent element not found");
+          throw new Error("Container parent element not found");
         }
 
         const width = parent.clientWidth || 800;
         const height = parent.clientHeight || 600;
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          throw new Error("Failed to get canvas context");
-        }
-
-        ctx.fillStyle = "#0b1226";
-        ctx.fillRect(0, 0, width, height);
 
         const padding = 40;
         const availWidth = width - 2 * padding;
@@ -347,26 +346,62 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
         const offsetX = padding + (availWidth - rangeX * scale) / 2;
         const offsetY = padding + (availHeight - rangeY * scale) / 2;
 
-        ctx.strokeStyle = "#334155";
-        ctx.lineWidth = 0.5;
         const gridSpacing = 10;
 
-        const drawGrid = () => {
-          for (let x = minX; x <= maxX; x += gridSpacing) {
-            const px = offsetX + (x - minX) * scale;
-            ctx.beginPath();
-            ctx.moveTo(px, padding);
-            ctx.lineTo(px, height - padding);
-            ctx.stroke();
-          }
-          for (let y = minY; y <= maxY; y += gridSpacing) {
-            const py = offsetY + (y - minY) * scale;
-            ctx.beginPath();
-            ctx.moveTo(padding, py);
-            ctx.lineTo(width - padding, py);
-            ctx.stroke();
-          }
-        };
+        const svg = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "svg",
+        );
+        svg.setAttribute("width", String(width));
+        svg.setAttribute("height", String(height));
+        svg.setAttribute(
+          "style",
+          "display: block; border: 1px solid var(--border); border-radius: var(--radius); background: rgb(15, 23, 42);",
+        );
+
+        const bg = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "rect",
+        );
+        bg.setAttribute("width", String(width));
+        bg.setAttribute("height", String(height));
+        bg.setAttribute("fill", "#0b1226");
+        svg.appendChild(bg);
+
+        const gridGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        gridGroup.setAttribute("stroke", "#334155");
+        gridGroup.setAttribute("stroke-width", "0.5");
+
+        for (let x = minX; x <= maxX; x += gridSpacing) {
+          const px = offsetX + (x - minX) * scale;
+          const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line",
+          );
+          line.setAttribute("x1", String(px));
+          line.setAttribute("y1", String(padding));
+          line.setAttribute("x2", String(px));
+          line.setAttribute("y2", String(height - padding));
+          gridGroup.appendChild(line);
+        }
+
+        for (let y = minY; y <= maxY; y += gridSpacing) {
+          const py = offsetY + (y - minY) * scale;
+          const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line",
+          );
+          line.setAttribute("x1", String(padding));
+          line.setAttribute("y1", String(py));
+          line.setAttribute("x2", String(width - padding));
+          line.setAttribute("y2", String(py));
+          gridGroup.appendChild(line);
+        }
+
+        svg.appendChild(gridGroup);
 
         const transformedPaths: Array<{
           points: Point[];
@@ -406,10 +441,135 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           (sum, p) => sum + p.points.length,
           0,
         );
-        const pointsPerSecond = 600;
+        const pointsPerSecond = 700;
 
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
+        const pathElements = transformedPaths.map((segment) => {
+          const path = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path",
+          );
+          path.setAttribute("stroke", segment.isRapid ? "#a78bfa" : "#60a5fa");
+          path.setAttribute("stroke-width", String(segment.isRapid ? 0.8 : 2));
+          path.setAttribute("fill", "none");
+          path.setAttribute("stroke-linecap", "round");
+          path.setAttribute("stroke-linejoin", "round");
+          svg.appendChild(path);
+          return { path, segment };
+        });
+
+        const arcLinesGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        arcLinesGroup.setAttribute("stroke", "#f97316");
+        arcLinesGroup.setAttribute("stroke-width", "0.8");
+        arcLinesGroup.setAttribute("fill", "none");
+
+        for (const arcCenter of transformedArcCenters) {
+          const path = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path",
+          );
+          path.setAttribute(
+            "d",
+            `M ${arcCenter.startPoint.x} ${arcCenter.startPoint.y} L ${arcCenter.x} ${arcCenter.y} L ${arcCenter.endPoint.x} ${arcCenter.endPoint.y}`,
+          );
+          arcLinesGroup.appendChild(path);
+        }
+
+        svg.appendChild(arcLinesGroup);
+
+        const arcCirclesGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        arcCirclesGroup.setAttribute("fill", "#f97316");
+
+        for (const arcCenter of transformedArcCenters) {
+          const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          circle.setAttribute("cx", String(arcCenter.x));
+          circle.setAttribute("cy", String(arcCenter.y));
+          circle.setAttribute("r", "2.5");
+          arcCirclesGroup.appendChild(circle);
+        }
+
+        svg.appendChild(arcCirclesGroup);
+
+        const endCirclesGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        endCirclesGroup.setAttribute("fill", "#f97316");
+
+        for (const segment of transformedPaths) {
+          const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          circle.setAttribute("cx", String(segment.endPoint.x));
+          circle.setAttribute("cy", String(segment.endPoint.y));
+          circle.setAttribute("r", "2.5");
+          endCirclesGroup.appendChild(circle);
+        }
+
+        svg.appendChild(endCirclesGroup);
+
+        const startCirclesGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        startCirclesGroup.setAttribute("fill", "#10b981");
+
+        if (
+          transformedPaths.length > 0 &&
+          transformedPaths[0].points.length > 0
+        ) {
+          const sp = transformedPaths[0].points[0];
+          const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle",
+          );
+          circle.setAttribute("cx", String(sp.x));
+          circle.setAttribute("cy", String(sp.y));
+          circle.setAttribute("r", "5");
+          startCirclesGroup.appendChild(circle);
+        }
+
+        svg.appendChild(startCirclesGroup);
+
+        const currentCirclesGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        currentCirclesGroup.setAttribute("fill", "#fbbf24");
+        const currentCircle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        );
+        currentCircle.setAttribute("r", "4");
+        currentCircle.setAttribute("opacity", "0");
+        currentCirclesGroup.appendChild(currentCircle);
+        svg.appendChild(currentCirclesGroup);
+
+        const endPointGroup = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "g",
+        );
+        endPointGroup.setAttribute("fill", "#ef4444");
+        const endPointCircle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        );
+        endPointCircle.setAttribute("r", "5");
+        endPointCircle.setAttribute("opacity", "0");
+        endPointGroup.appendChild(endPointCircle);
+        svg.appendChild(endPointGroup);
+
+        container.innerHTML = "";
+        container.appendChild(svg);
 
         let startTime: number | null = null;
         let rafId: number | null = null;
@@ -426,89 +586,45 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
                 Math.floor((elapsed / 1000) * pointsPerSecond),
               );
 
-          ctx.fillStyle = "#0b1226";
-          ctx.fillRect(0, 0, width, height);
-          ctx.strokeStyle = "#334155";
-          drawGrid();
-
           let remaining = pointsToDraw;
           let lastDrawnPoint: Point | null = null;
 
-          for (const segment of transformedPaths) {
-            if (remaining <= 0) break;
-            const count = Math.min(segment.points.length, remaining);
-            if (count === 0) break;
-
-            ctx.strokeStyle = segment.isRapid ? "#a78bfa" : "#60a5fa";
-            ctx.lineWidth = segment.isRapid ? 0.8 : 2;
-
-            ctx.beginPath();
-            ctx.moveTo(segment.points[0].x, segment.points[0].y);
-            for (let i = 1; i < count; i++) {
-              ctx.lineTo(segment.points[i].x, segment.points[i].y);
-              lastDrawnPoint = segment.points[i];
+          for (const { path, segment } of pathElements) {
+            if (remaining <= 0) {
+              path.setAttribute("d", "");
+              break;
             }
-            ctx.stroke();
+            const count = Math.min(segment.points.length, remaining);
+            if (count === 0) {
+              path.setAttribute("d", "");
+              break;
+            }
+
+            const pointsToUse = segment.points.slice(0, count);
+            const pathData = pointsToPathData(pointsToUse);
+            path.setAttribute("d", pathData);
+
+            if (count > 0) {
+              lastDrawnPoint = pointsToUse[pointsToUse.length - 1];
+            }
 
             remaining -= count;
           }
 
-          for (const arcCenter of transformedArcCenters) {
-            ctx.strokeStyle = "#f97316";
-            ctx.lineWidth = 0.8;
-
-            ctx.beginPath();
-            ctx.moveTo(arcCenter.startPoint.x, arcCenter.startPoint.y);
-            ctx.lineTo(arcCenter.x, arcCenter.y);
-            ctx.lineTo(arcCenter.endPoint.x, arcCenter.endPoint.y);
-            ctx.stroke();
-          }
-
-          for (const arcCenter of transformedArcCenters) {
-            ctx.fillStyle = "#f97316";
-            ctx.beginPath();
-            ctx.arc(arcCenter.x, arcCenter.y, 2.5, 0, 2 * Math.PI);
-            ctx.fill();
-          }
-
-          for (const segment of transformedPaths) {
-            ctx.fillStyle = "#f97316";
-            ctx.beginPath();
-            ctx.arc(
-              segment.endPoint.x,
-              segment.endPoint.y,
-              2.5,
-              0,
-              2 * Math.PI,
-            );
-            ctx.fill();
-          }
-
-          if (
-            transformedPaths.length > 0 &&
-            transformedPaths[0].points.length > 0
-          ) {
-            const sp = transformedPaths[0].points[0];
-            ctx.fillStyle = "#10b981";
-            ctx.beginPath();
-            ctx.arc(sp.x, sp.y, 5, 0, 2 * Math.PI);
-            ctx.fill();
-          }
-
           if (pointsToDraw < totalPoints) {
             if (lastDrawnPoint) {
-              ctx.fillStyle = "#fbbf24";
-              ctx.beginPath();
-              ctx.arc(lastDrawnPoint.x, lastDrawnPoint.y, 4, 0, 2 * Math.PI);
-              ctx.fill();
+              currentCircle.setAttribute("cx", String(lastDrawnPoint.x));
+              currentCircle.setAttribute("cy", String(lastDrawnPoint.y));
+              currentCircle.setAttribute("opacity", "1");
+              endPointCircle.setAttribute("opacity", "0");
             }
           } else {
             const lastPath = transformedPaths[transformedPaths.length - 1];
             const ep = lastPath.points[lastPath.points.length - 1];
-            ctx.fillStyle = "#ef4444";
-            ctx.beginPath();
-            ctx.arc(ep.x, ep.y, 5, 0, 2 * Math.PI);
-            ctx.fill();
+            endPointCircle.setAttribute("cx", String(ep.x));
+            endPointCircle.setAttribute("cy", String(ep.y));
+            endPointCircle.setAttribute("opacity", "1");
+            currentCircle.setAttribute("opacity", "0");
             setIsLoading(false);
           }
 
@@ -524,7 +640,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           if (rafId) cancelAnimationFrame(rafId);
         };
 
-        (canvas as any).__gcodeCleanup = cleanup;
+        (container as any).__gcodeCleanup = cleanup;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error loading G-code";
@@ -538,7 +654,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
 
     return () => {
       try {
-        const c = (canvas as any).__gcodeCleanup;
+        const c = (container as any).__gcodeCleanup;
         if (typeof c === "function") c();
       } catch (e) {}
     };
@@ -591,9 +707,9 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           </div>
         )}
 
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full border border-border rounded-md bg-slate-900"
+        <div
+          ref={containerRef}
+          className="w-full h-full"
           style={{ minHeight: "400px", display: "block" }}
         />
 
