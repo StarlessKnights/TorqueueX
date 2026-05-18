@@ -441,7 +441,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           (sum, p) => sum + p.points.length,
           0,
         );
-        const pointsPerSecond = 700;
+        const pointsPerSecond = totalPoints / 2.75;
 
         const pathElements = transformedPaths.map((segment) => {
           const path = document.createElementNS(
