@@ -6,7 +6,9 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export async function GET() {
   try {
-    const parts = await prisma.parts.findMany();
+    const parts = await prisma.parts.findMany({
+      orderBy: [{ priority: "asc" }, { create_date: "asc" }],
+    });
 
     return NextResponse.json(parts);
   } catch (error) {
