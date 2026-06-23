@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { useMainStore } from "../stores/mainStore";
+import AddProjectDialog from "./AddProjectDialog";
 
 export default function Header() {
   const [selectedSearchCategory, setSelectedSearchCategory] = useState("parts");
@@ -33,6 +34,7 @@ export default function Header() {
               useMainStore.setState({ projectFilter: project });
             }}
           />
+          <AddProjectDialog />
           <MachineFilter
             machines={machines}
             onSelect={(machine) => {
