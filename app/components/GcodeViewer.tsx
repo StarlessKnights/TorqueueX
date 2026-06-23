@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 
 const gcodeFetchCache = new Map<string, Promise<string>>();
+const gcodeCleanupMap = new WeakMap<HTMLElement, () => void>();
 
 interface GcodeViewerProps {
   cadFilePath: string | null;
@@ -266,10 +267,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
 
     const container = containerRef.current;
 
-    try {
-      const prevCleanup = (container as any).__gcodeCleanup;
-      if (typeof prevCleanup === "function") prevCleanup();
-    } catch (e) {}
+    gcodeCleanupMap.get(container)?.();
 
     const loadAndRenderGcode = async () => {
       try {
@@ -640,7 +638,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           if (rafId) cancelAnimationFrame(rafId);
         };
 
-        (container as any).__gcodeCleanup = cleanup;
+        gcodeCleanupMap.set(container, cleanup);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error loading G-code";
@@ -653,10 +651,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
     loadAndRenderGcode();
 
     return () => {
-      try {
-        const c = (container as any).__gcodeCleanup;
-        if (typeof c === "function") c();
-      } catch (e) {}
+      gcodeCleanupMap.get(container)?.();
     };
   }, [cadFilePath, partId]);
 
