@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useRef, useState } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,10 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -161,6 +165,24 @@ export default function AddPartDialog() {
   );
   const machines = useMainStore((state) => state.machines);
   const projects = useMainStore((state) => state.projects);
+
+  // Group projects by year (first 4 characters)
+  const groupedProjects = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+
+    for (const project of projects) {
+      const year = project.slice(0, 4);
+      const key = /^\d{4}$/.test(year) ? year : "Other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(project);
+    }
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return b.localeCompare(a);
+    });
+  }, [projects]);
 
   const [open, setOpen] = useState(false);
   const [dueDateOpen, setDueDateOpen] = useState(false);
@@ -330,20 +352,34 @@ export default function AddPartDialog() {
                   >
                     None
                   </DropdownMenuItem>
-                  {projects.map((project) => (
-                    <DropdownMenuItem
-                      key={project}
-                      onClick={() =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "project",
-                          value: project,
-                        })
-                      }
-                    >
-                      {project}
-                    </DropdownMenuItem>
-                  ))}
+                  {groupedProjects.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {groupedProjects.map(([year, yearProjects]) => (
+                        <DropdownMenuSub key={year}>
+                          <DropdownMenuSubTrigger>
+                            {year}
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {yearProjects.map((project) => (
+                              <DropdownMenuItem
+                                key={project}
+                                onClick={() =>
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "project",
+                                    value: project,
+                                  })
+                                }
+                              >
+                                {project}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      ))}
+                    </>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>

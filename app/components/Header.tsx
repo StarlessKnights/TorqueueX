@@ -7,10 +7,14 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -108,6 +112,23 @@ function ProjectFilter({
 }) {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
+  const groupedProjects = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+
+    for (const project of projects) {
+      const year = project.slice(0, 4);
+      const key = /^\d{4}$/.test(year) ? year : "Other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(project);
+    }
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return b.localeCompare(a);
+    });
+  }, [projects]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -125,17 +146,29 @@ function ProjectFilter({
           >
             All
           </DropdownMenuItem>
-          {projects.map((project) => (
-            <DropdownMenuItem
-              key={project}
-              onClick={() => {
-                setSelectedProject(project);
-                onSelect(project);
-              }}
-            >
-              {project}
-            </DropdownMenuItem>
-          ))}
+          {groupedProjects.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {groupedProjects.map(([year, yearProjects]) => (
+                <DropdownMenuSub key={year}>
+                  <DropdownMenuSubTrigger>{year}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {yearProjects.map((project) => (
+                      <DropdownMenuItem
+                        key={project}
+                        onClick={() => {
+                          setSelectedProject(project);
+                          onSelect(project);
+                        }}
+                      >
+                        {project}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ))}
+            </>
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
