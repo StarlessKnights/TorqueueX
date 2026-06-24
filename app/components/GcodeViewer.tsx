@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Play, AlertCircle } from "lucide-react";
 
 const gcodeFetchCache = new Map<string, Promise<string>>();
 const gcodeCleanupMap = new WeakMap<HTMLElement, () => void>();
@@ -27,6 +27,18 @@ interface ArcCenter {
   y: number;
   startPoint: Point;
   endPoint: Point;
+}
+
+interface RenderData {
+  pathElements: Array<{
+    path: SVGPathElement;
+    points: Point[];
+    isRapid: boolean;
+  }>;
+  totalPoints: number;
+  pointsPerSecond: number;
+  currentCircle: SVGCircleElement;
+  endPointCircle: SVGCircleElement;
 }
 
 function pointsToPathData(points: Point[]): string {
@@ -256,9 +268,13 @@ function parseGcode(gcodeText: string): {
 
 export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const skipAnimationRef = useRef(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const renderDataRef = useRef<RenderData | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const animGenRef = useRef(0);
+
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (!cadFilePath || !containerRef.current) {
@@ -271,8 +287,16 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
 
     const loadAndRenderGcode = async () => {
       try {
-        setIsLoading(true);
+        setProgress(10);
         setError(null);
+        setIsPlaying(false);
+        renderDataRef.current = null;
+        animGenRef.current++;
+
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
 
         let textPromise = gcodeFetchCache.get(cadFilePath);
         if (!textPromise) {
@@ -293,13 +317,19 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           textPromise = fetchPromise;
         }
 
+        setProgress(40);
+
         const text = await textPromise;
+
+        setProgress(60);
 
         const { paths, arcCenters } = parseGcode(text);
 
         if (paths.length === 0) {
           throw new Error("No valid G-code paths found in file");
         }
+
+        setProgress(75);
 
         let minX = Infinity,
           maxX = -Infinity;
@@ -441,19 +471,32 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
         );
         const pointsPerSecond = totalPoints / 2.75;
 
-        const pathElements = transformedPaths.map((segment) => {
-          const path = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path",
-          );
-          path.setAttribute("stroke", segment.isRapid ? "#a78bfa" : "#60a5fa");
-          path.setAttribute("stroke-width", String(segment.isRapid ? 0.8 : 2));
-          path.setAttribute("fill", "none");
-          path.setAttribute("stroke-linecap", "round");
-          path.setAttribute("stroke-linejoin", "round");
-          svg.appendChild(path);
-          return { path, segment };
-        });
+        const pathElements: RenderData["pathElements"] = transformedPaths.map(
+          (segment) => {
+            const path = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "path",
+            );
+            path.setAttribute(
+              "stroke",
+              segment.isRapid ? "#a78bfa" : "#60a5fa",
+            );
+            path.setAttribute(
+              "stroke-width",
+              String(segment.isRapid ? 0.8 : 2),
+            );
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+            path.setAttribute("d", pointsToPathData(segment.points));
+            svg.appendChild(path);
+            return {
+              path,
+              points: segment.points,
+              isRapid: segment.isRapid,
+            };
+          },
+        );
 
         const arcLinesGroup = document.createElementNS(
           "http://www.w3.org/2000/svg",
@@ -569,91 +612,117 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
         container.innerHTML = "";
         container.appendChild(svg);
 
-        let startTime: number | null = null;
-        let rafId: number | null = null;
-        let cancelled = false;
-
-        const drawFrame = (timestamp: number) => {
-          if (cancelled) return;
-          if (!startTime) startTime = timestamp;
-          const elapsed = timestamp - startTime;
-          const pointsToDraw = skipAnimationRef.current
-            ? totalPoints
-            : Math.min(
-                totalPoints,
-                Math.floor((elapsed / 1000) * pointsPerSecond),
-              );
-
-          let remaining = pointsToDraw;
-          let lastDrawnPoint: Point | null = null;
-
-          for (const { path, segment } of pathElements) {
-            if (remaining <= 0) {
-              path.setAttribute("d", "");
-              break;
-            }
-            const count = Math.min(segment.points.length, remaining);
-            if (count === 0) {
-              path.setAttribute("d", "");
-              break;
-            }
-
-            const pointsToUse = segment.points.slice(0, count);
-            const pathData = pointsToPathData(pointsToUse);
-            path.setAttribute("d", pathData);
-
-            if (count > 0) {
-              lastDrawnPoint = pointsToUse[pointsToUse.length - 1];
-            }
-
-            remaining -= count;
-          }
-
-          if (pointsToDraw < totalPoints) {
-            if (lastDrawnPoint) {
-              currentCircle.setAttribute("cx", String(lastDrawnPoint.x));
-              currentCircle.setAttribute("cy", String(lastDrawnPoint.y));
-              currentCircle.setAttribute("opacity", "1");
-              endPointCircle.setAttribute("opacity", "0");
-            }
-          } else {
-            const lastPath = transformedPaths[transformedPaths.length - 1];
-            const ep = lastPath.points[lastPath.points.length - 1];
-            endPointCircle.setAttribute("cx", String(ep.x));
-            endPointCircle.setAttribute("cy", String(ep.y));
-            endPointCircle.setAttribute("opacity", "1");
-            currentCircle.setAttribute("opacity", "0");
-            setIsLoading(false);
-          }
-
-          if (pointsToDraw < totalPoints) {
-            rafId = requestAnimationFrame(drawFrame);
-          }
+        renderDataRef.current = {
+          pathElements,
+          totalPoints,
+          pointsPerSecond,
+          currentCircle,
+          endPointCircle,
         };
 
-        rafId = requestAnimationFrame(drawFrame);
-
-        const cleanup = () => {
-          cancelled = true;
-          if (rafId) cancelAnimationFrame(rafId);
-        };
-
-        gcodeCleanupMap.set(container, cleanup);
+        setProgress(100);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error loading G-code";
         setError(errorMessage);
         console.error("Error loading G-code file:", err);
-        setIsLoading(false);
+        setProgress(0);
       }
     };
 
     loadAndRenderGcode();
 
     return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
       gcodeCleanupMap.get(container)?.();
     };
   }, [cadFilePath, partId]);
+
+  const handlePlay = useCallback(() => {
+    const data = renderDataRef.current;
+    if (!data) return;
+
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    const gen = ++animGenRef.current;
+
+    for (const { path } of data.pathElements) {
+      path.setAttribute("d", "");
+    }
+    data.currentCircle.setAttribute("opacity", "0");
+    data.endPointCircle.setAttribute("opacity", "0");
+
+    setIsPlaying(true);
+
+    const {
+      pathElements,
+      totalPoints,
+      pointsPerSecond,
+      currentCircle,
+      endPointCircle,
+    } = data;
+    let startTime: number | null = null;
+
+    const drawFrame = (timestamp: number) => {
+      if (animGenRef.current !== gen) return;
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const pointsToDraw = Math.min(
+        totalPoints,
+        Math.floor((elapsed / 1000) * pointsPerSecond),
+      );
+
+      let remaining = pointsToDraw;
+      let lastDrawnPoint: Point | null = null;
+
+      for (const { path, points } of pathElements) {
+        if (remaining <= 0) {
+          path.setAttribute("d", "");
+          break;
+        }
+        const count = Math.min(points.length, remaining);
+        if (count === 0) {
+          path.setAttribute("d", "");
+          break;
+        }
+
+        const pointsToUse = points.slice(0, count);
+        path.setAttribute("d", pointsToPathData(pointsToUse));
+
+        if (count > 0) {
+          lastDrawnPoint = pointsToUse[pointsToUse.length - 1];
+        }
+
+        remaining -= count;
+      }
+
+      if (pointsToDraw < totalPoints) {
+        if (lastDrawnPoint) {
+          currentCircle.setAttribute("cx", String(lastDrawnPoint.x));
+          currentCircle.setAttribute("cy", String(lastDrawnPoint.y));
+          currentCircle.setAttribute("opacity", "1");
+          endPointCircle.setAttribute("opacity", "0");
+        }
+        animFrameRef.current = requestAnimationFrame(drawFrame);
+      } else {
+        const lastElement = pathElements[pathElements.length - 1];
+        const ep = lastElement.points[lastElement.points.length - 1];
+        endPointCircle.setAttribute("cx", String(ep.x));
+        endPointCircle.setAttribute("cy", String(ep.y));
+        endPointCircle.setAttribute("opacity", "1");
+        currentCircle.setAttribute("opacity", "0");
+        setIsPlaying(false);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(drawFrame);
+  }, []);
 
   if (!cadFilePath) {
     return (
@@ -666,31 +735,17 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="relative flex-1 min-h-0">
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <p className="text-sm text-muted-foreground">
-                Loading CAM file...
-              </p>
-              <p className="text-xs text-muted-foreground mt-1 wrap-break-word">
-                This may take a few seconds for large files
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  skipAnimationRef.current = true;
-                }}
-                className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 underline underline-offset-2 mt-3 transition-colors"
-              >
-                Skip animation
-              </button>
-            </div>
+        {progress < 100 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-muted-foreground/20 z-50">
+            <div
+              className="h-full bg-primary transition-all duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 border border-destructive rounded-md p-4">
+          <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 border border-destructive rounded-md p-4 z-40">
             <div className="text-center">
               <p className="text-sm font-medium text-destructive">
                 Failed to load G-code
@@ -707,6 +762,21 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           className="w-full h-full"
           style={{ minHeight: "400px", display: "block" }}
         />
+
+        {!error && progress >= 100 && (
+          <button
+            type="button"
+            onClick={handlePlay}
+            className="absolute bottom-4 right-4 z-40 flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600 rounded-full px-4 py-2 transition-all duration-200 shadow-md"
+          >
+            <Play
+              className={`h-4 w-4 text-blue-400 ${isPlaying ? "animate-pulse" : ""}`}
+            />
+            <span className="text-xs font-medium text-slate-200">
+              {isPlaying ? "Replay" : "Play"}
+            </span>
+          </button>
+        )}
 
         <div className="absolute bottom-4 left-4 z-40 group">
           <button
