@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, AlertCircle } from "lucide-react";
 
+const POINTS_PER_SECOND = 650;
+
 const gcodeFetchCache = new Map<string, Promise<string>>();
 const gcodeCleanupMap = new WeakMap<HTMLElement, () => void>();
 
@@ -36,7 +38,6 @@ interface RenderData {
     isRapid: boolean;
   }>;
   totalPoints: number;
-  pointsPerSecond: number;
   currentCircle: SVGCircleElement;
   endPointCircle: SVGCircleElement;
 }
@@ -275,6 +276,8 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [animFraction, setAnimFraction] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
     if (!cadFilePath || !containerRef.current) {
@@ -469,8 +472,6 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           (sum, p) => sum + p.points.length,
           0,
         );
-        const pointsPerSecond = totalPoints / 2.75;
-
         const pathElements: RenderData["pathElements"] = transformedPaths.map(
           (segment) => {
             const path = document.createElementNS(
@@ -615,7 +616,6 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
         renderDataRef.current = {
           pathElements,
           totalPoints,
-          pointsPerSecond,
           currentCircle,
           endPointCircle,
         };
@@ -659,24 +659,31 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
     data.endPointCircle.setAttribute("opacity", "0");
 
     setIsPlaying(true);
+    setAnimFraction(0);
+    setElapsedSec(0);
 
     const {
       pathElements,
       totalPoints,
-      pointsPerSecond,
       currentCircle,
       endPointCircle,
     } = data;
+
+    const totalDuration = totalPoints / POINTS_PER_SECOND;
     let startTime: number | null = null;
 
     const drawFrame = (timestamp: number) => {
       if (animGenRef.current !== gen) return;
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
+      const elapsedSeconds = elapsed / 1000;
       const pointsToDraw = Math.min(
         totalPoints,
-        Math.floor((elapsed / 1000) * pointsPerSecond),
+        Math.floor(elapsedSeconds * POINTS_PER_SECOND),
       );
+
+      setElapsedSec(Math.min(elapsedSeconds, totalDuration));
+      setAnimFraction(Math.min(pointsToDraw / totalPoints, 1));
 
       let remaining = pointsToDraw;
       let lastDrawnPoint: Point | null = null;
@@ -717,6 +724,8 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
         endPointCircle.setAttribute("cy", String(ep.y));
         endPointCircle.setAttribute("opacity", "1");
         currentCircle.setAttribute("opacity", "0");
+        setAnimFraction(1);
+        setElapsedSec(totalDuration);
         setIsPlaying(false);
       }
     };
@@ -735,15 +744,6 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="relative flex-1 min-h-0">
-        {progress < 100 && (
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-muted-foreground/20 z-50">
-            <div
-              className="h-full bg-primary transition-all duration-300 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 border border-destructive rounded-md p-4 z-40">
             <div className="text-center">
@@ -763,22 +763,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           style={{ minHeight: "400px", display: "block" }}
         />
 
-        {!error && progress >= 100 && (
-          <button
-            type="button"
-            onClick={handlePlay}
-            className="absolute bottom-4 right-4 z-40 flex items-center gap-1.5 bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600 rounded-full px-4 py-2 transition-all duration-200 shadow-md"
-          >
-            <Play
-              className={`h-4 w-4 text-blue-400 ${isPlaying ? "animate-pulse" : ""}`}
-            />
-            <span className="text-xs font-medium text-slate-200">
-              {isPlaying ? "Replay" : "Play"}
-            </span>
-          </button>
-        )}
-
-        <div className="absolute bottom-4 left-4 z-40 group">
+        <div className="absolute top-4 left-4 z-40 group">
           <button
             className="flex items-center gap-2 bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700 rounded-full px-3 py-2 transition-all duration-200"
             title="CAM preview warning"
@@ -789,7 +774,7 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
             </span>
           </button>
 
-          <div className="absolute bottom-full left-0 mb-2 bg-amber-950/95 border border-amber-700 rounded-md p-3 w-max max-w-xs shadow-lg backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+          <div className="absolute top-full left-0 mt-2 bg-amber-950/95 border border-amber-700 rounded-md p-3 w-max max-w-xs shadow-lg backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
             <p className="text-xs font-medium text-amber-100">
               Preview for reference only
             </p>
@@ -799,6 +784,45 @@ export function GcodeViewer({ cadFilePath, partId }: GcodeViewerProps) {
           </div>
         </div>
       </div>
+
+      {!error && (
+        <div className="flex-none flex items-center gap-3 px-3 py-2 bg-slate-900/70 backdrop-blur-sm border-t border-slate-700">
+          {progress >= 100 && (
+            <button
+              type="button"
+              onClick={handlePlay}
+              className="flex items-center justify-center h-7 w-7 rounded-full bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600 transition-colors shrink-0"
+              aria-label={isPlaying ? "Replay" : "Play"}
+            >
+              <Play
+                className={`h-3.5 w-3.5 text-blue-400 ${isPlaying ? "animate-pulse" : ""}`}
+              />
+            </button>
+          )}
+          {(progress < 100 || animFraction > 0) && (
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-400"
+                  style={{
+                    width: `${progress < 100 ? progress : animFraction * 100}%`,
+                    transition: animFraction > 0 ? "none" : "width 300ms ease-out",
+                  }}
+                />
+              </div>
+              {progress >= 100 && animFraction > 0 && (
+                <span className="text-[11px] text-slate-300 tabular-nums whitespace-nowrap font-mono shrink-0">
+                  {elapsedSec.toFixed(1)}s /{" "}
+                  {(
+                    (renderDataRef.current?.totalPoints ?? 0) / POINTS_PER_SECOND
+                  ).toFixed(1)}
+                  s
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
