@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -168,10 +168,10 @@ export function ManagePartDialog({ partId }: { partId: string }) {
     return <div>Not found</div>;
   }
 
-  return PartForm(part);
+  return <PartForm part={part} />;
 }
 
-function PartForm(part: Part) {
+function PartForm({ part }: { part: Part }) {
   const machines = useMainStore((state) => state.machines);
   const projects = useMainStore((state) => state.projects);
   const submitChanges = useActionStore((state) => state.submitChanges);
@@ -187,6 +187,19 @@ function PartForm(part: Part) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
   const uploadCADFile = useActionStore((state) => state.uploadCADFile);
+
+  useEffect(() => {
+    if (!open) {
+      dispatch({ type: "RESET", payload: getInitialFormState(part) });
+    }
+  }, [part, open]);
+
+  useEffect(() => {
+    if (open) {
+      dispatch({ type: "RESET", payload: getInitialFormState(part) });
+      setSelectedCAMFile(null);
+    }
+  }, [open, part]);
 
   function handleCAMFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

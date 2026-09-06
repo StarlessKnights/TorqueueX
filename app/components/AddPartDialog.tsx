@@ -36,6 +36,7 @@ import { useMainStore } from "../stores/mainStore";
 import { useActionStore } from "../stores/actionStore";
 import { part_status } from "@/lib/generated/prisma/enums";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox"
 
 type AddFormState = {
   name: string;
@@ -188,12 +189,14 @@ export default function AddPartDialog() {
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCAMFile, setSelectedCAMFile] = useState<File | null>(null);
+  const [hasNoCamFile, setHasNoCamFile] = useState(false);
   const [formState, dispatch] = useReducer(addFormReducer, initialFormState);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function resetForm() {
     dispatch({ type: "RESET", payload: initialFormState });
     setSelectedCAMFile(null);
+    setHasNoCamFile(false);
   }
 
   function handleDialogOpenChange(nextOpen: boolean) {
@@ -227,6 +230,11 @@ export default function AddPartDialog() {
   async function handleAddPart() {
     if (!formState.name.trim() || !formState.creator.trim()) {
       toast.warning("Name and Creator fields are required.");
+      return;
+    }
+
+    if (!selectedCAMFile && !hasNoCamFile) {
+      toast.error("Please upload a CAM file or mark that this part does not have one.");
       return;
     }
 
@@ -476,7 +484,7 @@ export default function AddPartDialog() {
                 variant="outline"
                 size="sm"
                 onClick={() => inputRef.current?.click()}
-                disabled={isSubmitting}
+                disabled={isSubmitting || hasNoCamFile}
               >
                 {selectedCAMFile ? "Replace CAM File" : "Select CAM File"}
               </Button>
@@ -501,6 +509,15 @@ export default function AddPartDialog() {
               className="hidden"
               onChange={handleCAMFileSelect}
             />
+            <FieldGroup className="mt-2 flex items-center gap-2">
+              <Field orientation="horizontal">
+                <Checkbox id="hasNoCamFile" checked={hasNoCamFile} onCheckedChange={(e) => setHasNoCamFile(!hasNoCamFile)} disabled={isSubmitting || !!selectedCAMFile} />
+
+                <FieldLabel htmlFor="hasNoCamFile">
+                  This part does not have a CAM file
+                </FieldLabel>
+              </Field>
+            </FieldGroup>
           </Field>
         </FieldGroup>
 

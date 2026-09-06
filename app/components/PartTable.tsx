@@ -161,7 +161,12 @@ const getColumns = (): ColumnDef<Part>[] => [
     id: "manage",
     header: "Manage",
     cell: ({ row }) => {
-      return <ManagePartDialog partId={row.original.id} />;
+      return (
+        <ManagePartDialog
+          key={row.original.id}
+          partId={row.original.id}
+        />
+      );
     },
   },
 ];
@@ -238,9 +243,10 @@ export default function PartTable({}) {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: filteredParts || parts,
+    data: filteredParts,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id,
   });
 
   return (
@@ -277,7 +283,7 @@ export default function PartTable({}) {
           ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
-                key={row.id}
+                key={row.original.id}
                 data-state={row.getIsSelected() && "selected"}
                 className={row.original.needed === 0 ? "opacity-50" : ""}
               >
